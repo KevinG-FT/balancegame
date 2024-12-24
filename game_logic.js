@@ -5,8 +5,16 @@ let frequencyInterval, fcrNInterval;
 
 const elements = ['frequencyArrow', 'frequencyValue', 'batterySoc', 'batteryLabel', 'status', 'timer', 'revenue', 'cycleCount', 'lossMessage', 'batteryWarning', 'fcrUpCount', 'fcrDownCount', 'ffrCount']
     .reduce((acc, id) => ({ ...acc, [id]: document.getElementById(id) }), {});
-const buttons = ['fcrUp', 'fcrDown', 'ffr', 'charge', 'discharge', 'startGame', 'pauseGame', 'restartGame', 'fcrN']
+const buttons = ['fcrUp', 'fcrDown', 'ffr', 'charge', 'discharge', 'startGame', 'pauseGame', 'restartGame']
     .reduce((acc, id) => ({ ...acc, [id]: document.getElementById(id) }), {});
+
+const fcrNToggle = document.getElementById('fcrNToggle');
+
+if (fcrNToggle) {
+    fcrNToggle.onclick = () => toggleFcrN(!fcrNToggled);
+} else {
+    console.error('Element with id "fcrNToggle" not found.');
+}
 
 const updateUI = () => {
     const arrowPos = Math.min(100, Math.max(0, ((frequency - 49.5) / 1) * 100));
@@ -22,40 +30,53 @@ const updateUI = () => {
     elements.ffrCount.textContent = ffrRemaining;
 
     if (soc < 40 || soc > 60 || !gameActive) {
-        buttons.fcrN.disabled = true;
+        fcrNToggle.disabled = true;
         if (fcrNToggled) toggleFcrN(false);
     } else {
-        buttons.fcrN.disabled = false;
+        fcrNToggle.disabled = false;
     }
 
-    if (cycleCount > 40) {
-        elements.batteryWarning.textContent = 'Battery life shortened due to excessive cycles!';
-    } else {
-        elements.batteryWarning.textContent = '';
-    }
+    checkGameOver();
+};
 
-    if (soc < 10 || soc > 90 || frequency < 49.5 || frequency > 50.5) {
-        endGame('BLACKOUT - You lose!');
+const checkGameOver = () => {
+    if (frequency < 49.5 || frequency > 50.5 || soc < 10 || soc > 90) {
+        gameActive = false;
+        clearInterval(frequencyInterval);
+        clearInterval(fcrNInterval);
+        elements.lossMessage.textContent = 'Game Over!';
     }
 };
 
-const performAction = (type, { freqImpact, socImpact, revenueImpact, decrement }) => {
-    if (!gameActive || decrement <= 0) return;
-    if (type === 'charge' || type === 'discharge') cycleCount++;
-    else cycleCount += socImpact ? 1 : 0;
+const performAction = (action, { freqImpact, socImpact, revenueImpact }) => {
+    if (action === 'fcrUp' && fcrUpRemaining > 0) {
+        fcrUpRemaining--;
+    } else if (action === 'fcrDown' && fcrDownRemaining > 0) {
+        fcrDownRemaining--;
+    } else if (action === 'ffr' && ffrRemaining > 0) {
+        ffrRemaining--;
+    } else if (action !== 'charge' && action !== 'discharge') {
+        return; // Do nothing if no remaining actions
+    }
+
     frequency += freqImpact;
     soc = Math.min(100, Math.max(0, soc + socImpact));
     revenue += revenueImpact;
-    if (fcrNToggled) toggleFcrN(false);
     updateUI();
 };
 
 const startFcrN = () => {
     fcrNInterval = setInterval(() => {
-        if (!fcrNToggled || soc < 40 || soc > 60) return;
-        frequency += (Math.random() - 0.5) * 0.05; // Small stabilizing effect
-        soc = Math.max(0, soc - 0.1); // Slowly decreases SoC
-        cycleCount += 0.5; // Increases cycle count symmetrically
+        if (!fcrNToggled || soc < 40 || soc > 60) {
+            fcrNToggle.disabled = true;
+            if (fcrNToggled) toggleFcrN(false);
+            return;
+        }
+        fcrNToggle.disabled = false;
+        frequency += (Math.random() - 0.5) * 0.05;
+        soc = Math.max(0, soc - 0.1);
+        cycleCount += 0.5;
+        revenue += 10;
         updateUI();
     }, 1000);
 };
@@ -63,64 +84,50 @@ const startFcrN = () => {
 const toggleFcrN = (state) => {
     fcrNToggled = state;
     if (fcrNToggled) {
-        buttons.fcrN.textContent = 'FCR-N ON';
         startFcrN();
     } else {
         clearInterval(fcrNInterval);
-        buttons.fcrN.textContent = 'Toggle FCR-N';
     }
+};
+
+buttons.startGame.onclick = () => {
+    gameActive = true;
+    elements.lossMessage.textContent = '';
+    frequencyInterval = setInterval(() => {
+        frequency += (Math.random() - 0.5) * 0.1;
+        updateUI();
+    }, 1000);
     updateUI();
 };
 
-const startGame = () => {
-    gameActive = true;
-    timeRemaining = timeLimit;
-    buttons.startGame.disabled = true;
-    buttons.pauseGame.disabled = false;
-    elements.status.textContent = 'Status: Stable';
-
-    const timer = setInterval(() => {
-        if (--timeRemaining < 0 || !gameActive) {
-            clearInterval(timer);
-            if (frequency >= 49.5 && frequency <= 50.5) {
-                endGame('Congratulations! You win!');
-            } else {
-                endGame('BLACKOUT - You lose!');
-            }
-        }
-        const m = Math.floor(timeRemaining / 60), s = timeRemaining % 60;
-        elements.timer.textContent = `Time Left: ${m}:${s.toString().padStart(2, '0')}`;
-    }, 1000);
-
-    frequencyInterval = setInterval(() => {
-        if (!gameActive) return clearInterval(frequencyInterval);
-        frequency += (Math.random() - 0.5) * 0.1; // Slower random fluctuations
-        updateUI();
-    }, 1000);
-};
-
-const endGame = (msg) => {
+buttons.pauseGame.onclick = () => {
     gameActive = false;
     clearInterval(frequencyInterval);
     clearInterval(fcrNInterval);
-    elements.lossMessage.textContent = msg;
-    buttons.startGame.disabled = false;
-    buttons.pauseGame.disabled = true;
+    updateUI();
 };
 
-buttons.startGame.onclick = startGame;
-buttons.pauseGame.onclick = () => (gameActive = false);
 buttons.restartGame.onclick = () => {
-    Object.assign(this, { frequency: 50, soc: 50, revenue: 0, cycleCount: 0, fcrUpRemaining: maxOptions, fcrDownRemaining: maxOptions, ffrRemaining: maxOptions });
+    gameActive = false;
+    clearInterval(frequencyInterval);
+    clearInterval(fcrNInterval);
+    frequency = 50;
+    soc = 50;
+    revenue = 0;
+    cycleCount = 0;
+    fcrUpRemaining = maxOptions;
+    fcrDownRemaining = maxOptions;
+    ffrRemaining = maxOptions;
+    timeRemaining = timeLimit;
+    fcrNToggled = false;
     elements.lossMessage.textContent = '';
     updateUI();
-    elements.timer.textContent = 'Time Left: 3:00';
 };
 
-buttons.fcrUp.onclick = () => performAction('fcrUp', { freqImpact: 0.2, socImpact: -2, revenueImpact: 50, decrement: --fcrUpRemaining });
-buttons.fcrDown.onclick = () => performAction('fcrDown', { freqImpact: -0.2, socImpact: 2, revenueImpact: 50, decrement: --fcrDownRemaining });
-buttons.ffr.onclick = () => performAction('ffr', { freqImpact: -(frequency - 50), socImpact: -5, revenueImpact: 100, decrement: --ffrRemaining });
-buttons.charge.onclick = () => performAction('charge', { freqImpact: 0.1, socImpact: 5, revenueImpact: -20, decrement: 1 });
-buttons.discharge.onclick = () => performAction('discharge', { freqImpact: -0.1, socImpact: -5, revenueImpact: 50, decrement: 1 });
-buttons.fcrN.onclick = () => toggleFcrN(!fcrNToggled);
+buttons.charge.onclick = () => performAction('charge', { freqImpact: 0.1, socImpact: 5, revenueImpact: -20 });
+buttons.discharge.onclick = () => performAction('discharge', { freqImpact: -0.1, socImpact: -5, revenueImpact: 20 });
+buttons.fcrUp.onclick = () => performAction('fcrUp', { freqImpact: -0.2, socImpact: -10, revenueImpact: 30 });
+buttons.fcrDown.onclick = () => performAction('fcrDown', { freqImpact: 0.2, socImpact: 10, revenueImpact: -30 });
+buttons.ffr.onclick = () => performAction('ffr', { freqImpact: 0.3, socImpact: -15, revenueImpact: 50 });
+
 updateUI();
