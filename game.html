@@ -84,7 +84,7 @@
       justify-content: center; /* Center the buttons horizontally */
     }
 
-    /* Make the buttons smaller */
+    /* buttons */
     .button {
       font-size: 0.9rem;
       padding: 6px 12px;
@@ -255,6 +255,21 @@
         gap: 8px;
       }
     }
+
+    .game-console {
+        width: 100%;
+        max-height: 120px;       /* so it doesn't grow too tall */
+        overflow-y: auto;        /* scrollbar if content exceeds max-height */
+        background-color: #222;  /* dark background, for "console" vibe */
+        color: #0f0;             /* green text */
+        font-family: monospace;  /* console-like font */
+        font-size: 0.9rem;
+        border: 1px solid #555;
+        border-radius: 4px;
+        margin-top: 10px;
+        padding: 5px;
+        }
+
     .environment-stats {
   display: flex;
   flex-wrap: wrap;           /* allows wrapping if the screen is narrow */
@@ -287,6 +302,7 @@
     #sun {
     font-weight: bold;         /* or normal, depending on your preference */
     }
+
   </style>
 </head>
 <body>
@@ -324,6 +340,8 @@
         <div id="frequencyArrow" class="frequency-arrow"></div>
       </div>
 
+      <div id="gameConsole" class="game-console"></div>
+
       <!-- Battery Display -->
       <div class="battery-container">
         <div id="batterySoc" class="battery-soc" style="height:50%;"></div>
@@ -337,12 +355,17 @@
 
       <!-- Control Buttons (FCR, FFR, charge, discharge) -->
       <div class="controls">
+        <!-- LEFT COLUMN: FCR-D Down Toggle + Charge -->
         <div class="column">
-          <button id="fcrDown" class="button">
-            FCR-D Down (<span id="fcrDownCount">4</span>)
-          </button>
+          <div>Toggle FCR-D Down</div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="fcrDDownToggle">
+            <span class="slider"></span>
+          </label>
           <button id="charge" class="button">Charge Battery</button>
         </div>
+      
+        <!-- MIDDLE COLUMN: FCR-N Toggle + FFR Button -->
         <div class="column">
           <div id="fcr-nlabel">Toggle FCR-N</div>
           <label class="toggle-switch">
@@ -351,10 +374,14 @@
           </label>
           <button id="ffr" class="button">FFR (<span id="ffrCount">4</span>)</button>
         </div>
+      
+        <!-- RIGHT COLUMN: FCR-D Up Toggle + Discharge -->
         <div class="column">
-          <button id="fcrUp" class="button">
-            FCR-D Up (<span id="fcrUpCount">4</span>)
-          </button>
+          <div>Toggle FCR-D Up</div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="fcrDUpToggle">
+            <span class="slider"></span>
+          </label>
           <button id="discharge" class="button">Discharge Battery</button>
         </div>
       </div>
