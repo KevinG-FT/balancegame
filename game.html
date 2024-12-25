@@ -1,133 +1,395 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Balancing Market Game</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; display: flex; }
-        .game-controls { display: flex; justify-content: center; gap: 10px; margin-top: 20px; }
-        .status-timer { margin-top: 10px; text-align: left; }
-        .game-container { margin: 20px auto; width: 80%; max-width: 600px; text-align: center; }
-        .meter { width: 100%; background: linear-gradient(to right, red, yellow 20%, green 40%, green 60%, yellow 80%, red); height: 30px; position: relative; margin: 20px 0; border: 1px solid black; border-radius: 5px; }
-        .frequency-arrow { position: absolute; top: -10px; width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-top: 10px solid black; transform: translateX(-50%); }
-        .frequency-value { margin-top: 50px; font-weight: bold; font-size: 40px; }
-        .battery-container { margin-top: 20px; width: 50px; height: 150px; border: 2px solid black; border-radius: 10px; position: relative; display: inline-block; }
-        .battery-soc { position: absolute; bottom: 0; width: 100%; background: blue; transition: height 0.2s; }
-        .critical-line { position: absolute; left: 0; width: 100%; height: 2px; background: red; }
-        .critical-line.low { bottom: 10%; }
-        .critical-line.high { bottom: 90%; }
-        .battery-info { margin-top: 10px; font-weight: bold; display: flex; flex-direction: column; align-items: center; }
-        .controls { margin-top: 20px; display: flex; justify-content: space-between; }
-        .column { display: flex; flex-direction: column; align-items: center; gap: 10px; }
-        .button { padding: 10px 20px; margin: 5px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
-        .button:disabled { background-color: #aaa; cursor: not-allowed; }
-        .status { font-size: 1.2em; }
-        .timer { font-size: 1.5em; font-weight: bold; }
-        .revenue { margin-top: 10px; font-size: 1.2em; font-weight: bold; }
-        .loss-message, .battery-warning { margin-top: 10px; font-size: 1.2em; color: red; font-weight: bold; }
-        .info-pane { width: 200px; background-color: #fff; border-left: 1px solid #ccc; padding: 10px; box-shadow: -2px 0 5px rgba(0,0,0,0.1); font-size: 11px; }
-        #startGame, #pauseGame, #restartGame {
-            width: 60px;
-            padding: 3px 7px; 
-            background-color: black;
-        }
-        .toggle-switch {
-            position: relative;
-            display: inline-block;
-            width: 60px;
-            height: 34px;
-        }
-        .toggle-switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #ccc;
-            transition: .4s;
-            border-radius: 34px;
-        }
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 26px;
-            width: 26px;
-            left: 4px;
-            bottom: 4px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
-        }
-        input:checked + .slider {
-            background-color: #007bff;
-        }
-        input:checked + .slider:before {
-            transform: translateX(26px);
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Balancing Market Game</title>
+  <style>
+    /* Reset */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #fafafa;
+    }
+
+    /* Main Layout Wrapper */
+    .main-wrapper {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      align-items: flex-start;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      gap: 20px;
+    }
+
+    .game-container {
+      flex: 1;
+      background-color: #fff;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+
+    .info-pane {
+      width: 250px;
+      min-width: 200px;
+      max-width: 300px;
+      background-color: #fff;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+
+    /* GAME CONTROLS + TIMER */
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+      margin-bottom: 20px;
+      flex-wrap: wrap; /* Allows wrapping if screen is narrow */
+    }
+    .status-timer {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      margin-right: 10px;
+    }
+    #status {
+      font-size: 1rem;
+      margin-bottom: 2px;
+    }
+    #timer {
+      font-size: 1.1rem;
+      font-weight: bold;
+    }
+
+    .game-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center; /* Center the buttons horizontally */
+    }
+
+    /* Make the buttons smaller */
+    .button {
+      font-size: 0.9rem;
+      padding: 6px 12px;
+      background-color: #007bff;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    .button:hover:not(:disabled) {
+      background-color: #0056b3;
+    }
+    .button:disabled {
+      background-color: #aaa;
+      cursor: not-allowed;
+    }
+
+    /* FREQUENCY DISPLAY */
+    .frequency-value {
+      margin-top: 20px;
+      font-weight: bold;
+      font-size: 2rem;
+    }
+    .meter {
+      position: relative;
+      width: 100%;
+      height: 30px;
+      background: linear-gradient(to right, red, yellow 20%, green 40%, green 60%, yellow 80%, red);
+      margin: 20px 0;
+      border: 1px solid #000;
+      border-radius: 5px;
+    }
+    .frequency-arrow {
+      position: absolute;
+      top: -10px;
+      width: 0; 
+      height: 0;
+      border-left: 10px solid transparent;
+      border-right: 10px solid transparent;
+      border-top: 10px solid #000;
+      transform: translateX(-50%);
+      transition: left 0.2s ease; /* Smooth arrow movement */
+    }
+
+    /* BATTERY DISPLAY */
+    .battery-container {
+      display: inline-block;
+      position: relative;
+      width: 50px;
+      height: 150px;
+      border: 2px solid #000;
+      border-radius: 10px;
+      margin: 20px auto 10px auto;
+    }
+    .battery-soc {
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      background: #007bff;
+      transition: height 0.3s ease;
+    }
+    .critical-line {
+      position: absolute;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background: red;
+    }
+    .critical-line.low  { bottom: 10%; }
+    .critical-line.high { bottom: 90%; }
+
+    .battery-info {
+      margin-top: 10px;
+      font-weight: bold;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    #batteryLabel {
+      font-size: 1rem;
+    }
+    #cycleCount {
+      font-size: 0.95rem;
+    }
+
+    /* Control Groups (FCR, FFR, etc.) */
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 20px;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .column {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .revenue {
+      margin-top: 20px;
+      font-size: 1.1rem;
+      font-weight: bold;
+    }
+    .loss-message,
+    .battery-warning {
+      margin-top: 10px;
+      font-size: 1.1rem;
+      color: red;
+      font-weight: bold;
+    }
+
+    /* TOGGLE SWITCH */
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 60px;
+      height: 34px;
+    }
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #ccc;
+      transition: 0.4s;
+      border-radius: 34px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 26px; width: 26px;
+      left: 4px; bottom: 4px;
+      background-color: #fff;
+      transition: 0.4s;
+      border-radius: 50%;
+    }
+    input:checked + .slider {
+      background-color: #007bff;
+    }
+    input:checked + .slider:before {
+      transform: translateX(26px);
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .main-wrapper {
+        flex-direction: column;
+        align-items: center;
+      }
+      .info-pane {
+        width: 100%;
+        max-width: 600px;
+      }
+      .controls {
+        flex-direction: column;
+        align-items: center;
+      }
+      .top-bar {
+        flex-direction: column;
+        gap: 8px;
+      }
+    }
+    .environment-stats {
+  display: flex;
+  flex-wrap: wrap;           /* allows wrapping if the screen is narrow */
+  justify-content: center;
+  gap: 20px;
+  margin-top: 10px;
+  font-size: 0.95rem;        /* slightly smaller than main text, adjust as needed */
+}
+
+.environment-stats > div {
+  /* optional styling for each item in the environment-stats row */
+  padding: 4px 8px;
+  background-color: #f4f4f4;
+  border-radius: 4px;
+}
+
+    #weather {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    background-color: #fff;    /* override if needed */
+    padding: 0;
+    border-radius: 0;
+    }
+
+    #timeOfDay,
+    #spotPrice,
+    #temperature,
+    #wind,
+    #sun {
+    font-weight: bold;         /* or normal, depending on your preference */
+    }
+  </style>
 </head>
 <body>
+  <div class="main-wrapper">
     <div class="game-container">
-        <h1>Balancing Market Game</h1>
-        <div class="game-controls">
-            <button id="startGame" class="button">Start</button>
-            <button id="pauseGame" class="button" disabled>Pause</button>
-            <button id="restartGame" class="button">Restart</button>
-        </div>
+      <h1>Balancing Market Game</h1>
+
+      <!-- Top Bar: Timer & Status next to the smaller controls -->
+      <div class="top-bar">
         <div class="status-timer">
-            <div id="status" class="status">Status: Stable</div>
-            <div id="timer" class="timer">Time Left: 3:00</div>
+          <div id="status">Status: Stable</div>
+          <div id="timer">Time Left: 3:00</div>
         </div>
-        <div id="frequencyValue" class="frequency-value">50.00 Hz</div>
-        <div class="meter">
-            <div id="frequencyArrow" class="frequency-arrow"></div>
+        <div class="game-controls">
+          <button id="startGame" class="button">Start</button>
+          <button id="pauseGame" class="button" disabled>Pause</button>
+          <button id="restartGame" class="button">Restart</button>
         </div>
-        <div class="battery-container">
-            <div id="batterySoc" class="battery-soc" style="height: 50%;"></div>
-            <div class="critical-line low"></div>
-            <div class="critical-line high"></div>
+      </div>
+
+      <div class="environment-stats">
+        <div id="spotPrice">Spot Price: €0.0555/kWh</div>
+        <div id="wholesalePrice">Wholesale Price: €0.02775/kWh</div>
+        <div id="timeOfDay">Time of Day: 06:00</div>
+        <div id="weather">
+          <div id="temperature">Temperature: 20°C</div>
+          <div id="wind">Wind: 5 m/s</div>
+          <div id="sun">Sun: Partly Cloudy</div>
         </div>
-        <div class="battery-info">
-            <div id="batteryLabel">50.0% State of Charge</div>
-            <div id="cycleCount">Battery Cycles: 0</div>
+      </div>
+
+      <!-- Frequency Display -->
+      <div id="frequencyValue" class="frequency-value">50.00 Hz</div>
+      <div class="meter">
+        <div id="frequencyArrow" class="frequency-arrow"></div>
+      </div>
+
+      <!-- Battery Display -->
+      <div class="battery-container">
+        <div id="batterySoc" class="battery-soc" style="height:50%;"></div>
+        <div class="critical-line low"></div>
+        <div class="critical-line high"></div>
+      </div>
+      <div class="battery-info">
+        <div id="batteryLabel">50.0% State of Charge</div>
+        <div id="cycleCount">Battery Cycles: 0</div>
+      </div>
+
+      <!-- Control Buttons (FCR, FFR, charge, discharge) -->
+      <div class="controls">
+        <div class="column">
+          <button id="fcrDown" class="button">
+            FCR-D Down (<span id="fcrDownCount">4</span>)
+          </button>
+          <button id="charge" class="button">Charge Battery</button>
         </div>
-        <div class="controls">
-            <div class="column">
-                <button id="fcrDown" class="button">FCR-D Down (<span id="fcrDownCount">4</span>)</button>
-                <button id="charge" class="button">Charge Battery</button>
-            </div>
-            <div class="column">
-                <div id="fcr-nlabel">Toggle FCR-N</div>
-                <label class="toggle-switch">
-                    <input type="checkbox" id="fcrNToggle">
-                    <span class="slider"></span>
-                </label>
-                <button id="ffr" class="button">FFR (<span id="ffrCount">4</span>)</button>
-            </div>
-            <div class="column">
-                <button id="fcrUp" class="button">FCR-D Up (<span id="fcrUpCount">4</span>)</button>
-                <button id="discharge" class="button">Discharge Battery</button>
-            </div>
+        <div class="column">
+          <div id="fcr-nlabel">Toggle FCR-N</div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="fcrNToggle">
+            <span class="slider"></span>
+          </label>
+          <button id="ffr" class="button">FFR (<span id="ffrCount">4</span>)</button>
         </div>
-        <div id="revenue" class="revenue">Revenue: $0</div>
-        <div id="batteryWarning" class="battery-warning"></div>
-        <div id="lossMessage" class="loss-message"></div>
+        <div class="column">
+          <button id="fcrUp" class="button">
+            FCR-D Up (<span id="fcrUpCount">4</span>)
+          </button>
+          <button id="discharge" class="button">Discharge Battery</button>
+        </div>
+      </div>
+
+      <div id="revenue" class="revenue">Revenue: $0</div>
+      <div id="batteryWarning" class="battery-warning"></div>
+      <div id="lossMessage" class="loss-message"></div>
     </div>
+
+    <!-- Info Pane -->
     <div class="info-pane">
-        <h2>How To Play</h2>
-        <p>The objective is to keep the grid stable, as close to 50hz as possible, by participating in the balancing markets and earning revenue.</p>
-        <p>You can use the capacity of your battery in the balancing markets to directly affect the frequency up or down.</p>
-        <p>However, you must also take care not to damage your battery by having too low or too high state of charge or using excessive battery cycles.</p>
-        <p>You lose if the frequency goes too high (above 50.5) or too low (below 49.5) or if your battery state of charge goes below 10% or above 90%.</p>
-        <p>You win if you can keep the grid stable for 3 minutes and earn revenue by participating in the balancing markets.</p>
+      <h2>How To Play</h2>
+      <p>
+        The objective is to keep the grid stable, as close to 50Hz as possible,
+        by participating in the balancing markets and earning revenue.
+      </p>
+      <p>
+        You can use the capacity of your battery in the balancing markets to 
+        directly affect the frequency up or down.
+      </p>
+      <p>
+        However, you must also take care not to damage your battery by letting
+        your state of charge go too low or too high, or by excessive cycling.
+      </p>
+      <p>
+        You lose if the frequency goes too high (above 50.5) or too low (below 49.5),
+        or if your battery state of charge goes below 10% or above 90%.
+      </p>
+      <p>
+        You win if you can keep the grid stable for 3 minutes and earn revenue
+        by participating in the balancing markets.
+      </p>
     </div>
-    <script src="game_logic.js"></script>
+  </div>
+
+  <script src="game_logic.js"></script>
 </body>
 </html>
