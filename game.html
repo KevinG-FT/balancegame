@@ -2,13 +2,301 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <!-- Google Fonts for enhanced typography -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <meta name="viewport" content="width=device-width,initial-scale=1.0" />
   <title>Balancing Market Game</title>
- 
 </head>
 <body>
   <div class="main-wrapper">
+    <!-- Settings Button -->
+    <button id="settingsButton" class="settings-button">⚙️ Settings</button>
+
+    <!-- Settings Panel -->
+    <div id="settingsPanel" class="settings-panel">
+      <h2>Game Settings</h2>
+      
+      <!-- Game Time Settings -->
+      <section>
+        <h3>Game Time Settings</h3>
+        <label>
+          Game Duration (seconds):
+          <input type="number" id="gameDurationSeconds" min="60" max="3600" step="60">
+        </label>
+        <label>
+          Compressed Minutes per Second:
+          <input type="number" id="compressedMinutesPerSecond" min="1" max="60" step="1" readonly>
+        </label>
+      </section>
+      
+      <!-- Environment Parameters -->
+      <section>
+        <h3>Environment Parameters</h3>
+        <label>
+          Temperature Amplitude (°C):
+          <input type="number" id="temperatureAmplitude" min="0" max="50" step="1">
+        </label>
+        <label>
+          Temperature Midpoint (°C):
+          <input type="number" id="temperatureMidpoint" min="-50" max="50" step="1">
+        </label>
+        <label>
+          Wind Baseline Amplitude (m/s):
+          <input type="number" id="windBaselineAmplitude" min="0" max="20" step="1">
+        </label>
+        <label>
+          Wind Baseline Midpoint (m/s):
+          <input type="number" id="windBaselineMidpoint" min="0" max="30" step="1">
+        </label>
+        <label>
+          Wind Speed Max (m/s):
+          <input type="number" id="windSpeedMax" min="0" max="50" step="1">
+        </label>
+        <label>
+          Wind Speed Min (m/s):
+          <input type="number" id="windSpeedMin" min="0" max="50" step="1">
+        </label>
+        <label>
+          PV Generation Max (GW):
+          <input type="number" id="pvGenerationMaxGW" min="0" max="100" step="0.1">
+        </label>
+        <label>
+          Wind Generation Max (GW):
+          <input type="number" id="windGenerationMaxGW" min="0" max="100" step="0.1">
+        </label>
+        <label>
+          Baseline Generation (GW):
+          <input type="number" id="baselineGenerationGW" min="0" max="1000" step="1">
+        </label>
+      </section>
+      
+      <!-- Demand Parameters -->
+      <section>
+        <h3>Demand Parameters</h3>
+        <label>
+          Demand Base (GW):
+          <input type="number" id="demandBaseGW" min="0" max="1000" step="1">
+        </label>
+        <label>
+          Morning Peak Multiplier:
+          <input type="number" id="demandPeakMultiplierMorning" min="0" max="5" step="0.1">
+        </label>
+        <label>
+          Evening Peak Multiplier:
+          <input type="number" id="demandPeakMultiplierEvening" min="0" max="5" step="0.1">
+        </label>
+        <label>
+          Demand Temperature Factor:
+          <input type="number" id="demandTemperatureFactor" min="0" max="10" step="0.1">
+        </label>
+      </section>
+      
+      <!-- Frequency Parameters -->
+      <section>
+        <h3>Frequency Parameters</h3>
+        <label>
+          Frequency Base (Hz):
+          <input type="number" id="frequencyBase" min="40" max="60" step="0.1">
+        </label>
+        <label>
+          Frequency Change Scaling:
+          <input type="number" id="frequencyChangeScaling" min="0" max="1" step="0.001">
+        </label>
+        <label>
+          Frequency Clamp Min (Hz):
+          <input type="number" id="frequencyClampMin" min="40" max="50" step="0.1">
+        </label>
+        <label>
+          Frequency Clamp Max (Hz):
+          <input type="number" id="frequencyClampMax" min="50" max="60" step="0.1">
+        </label>
+        <label>
+          Frequency Noise Range (Hz):
+          <input type="number" id="frequencyNoiseRange" min="0" max="1" step="0.001">
+        </label>
+      </section>
+      
+      <!-- FCR-N Parameters -->
+      <section>
+        <h3>FCR-N Parameters</h3>
+        <label>
+          FCR-N SoC Min (%):
+          <input type="number" id="fcrNSoCMin" min="0" max="100" step="1">
+        </label>
+        <label>
+          FCR-N SoC Max (%):
+          <input type="number" id="fcrNSoCMax" min="0" max="100" step="1">
+        </label>
+        <label>
+          FCR-N Frequency Range Min (Hz):
+          <input type="number" id="fcrNFrequencyRangeMin" min="40" max="60" step="0.1">
+        </label>
+        <label>
+          FCR-N Frequency Range Max (Hz):
+          <input type="number" id="fcrNFrequencyRangeMax" min="40" max="60" step="0.1">
+        </label>
+        <label>
+          FCR-N Revenue per MW (EUR):
+          <input type="number" id="fcrNRevenuePerMW" min="0" max="1000" step="0.1">
+        </label>
+        <label>
+          FCR-N SoC Change per MW:
+          <input type="number" id="fcrNSoCChangePerMW" min="-10" max="10" step="0.1">
+        </label>
+      </section>
+      
+      <!-- FCR-D Parameters -->
+      <section>
+        <h3>FCR-D Parameters</h3>
+        <label>
+          FCR-D Activation Threshold Up (Hz):
+          <input type="number" id="fcrDActivationThresholdUp" min="40" max="60" step="0.1">
+        </label>
+        <label>
+          FCR-D Activation Threshold Down (Hz):
+          <input type="number" id="fcrDActivationThresholdDown" min="40" max="60" step="0.1">
+        </label>
+        <label>
+          FCR-D Ramp Time Partial (seconds):
+          <input type="number" id="fcrDRampTimePartial" min="1" max="300" step="1">
+        </label>
+        <label>
+          FCR-D Ramp Time Full (seconds):
+          <input type="number" id="fcrDRampTimeFull" min="1" max="300" step="1">
+        </label>
+        <label>
+          FCR-D Frequency Impact Partial (Hz/s):
+          <input type="number" id="fcrDFrequencyImpactPartial" min="-1" max="1" step="0.001">
+        </label>
+        <label>
+          FCR-D Frequency Impact Full (Hz/s):
+          <input type="number" id="fcrDFrequencyImpactFull" min="-1" max="1" step="0.001">
+        </label>
+        <label>
+          FCR-D SoC Impact Partial (%/s):
+          <input type="number" id="fcrDSoCImpactPartial" min="-10" max="10" step="0.1">
+        </label>
+        <label>
+          FCR-D SoC Impact Full (%/s):
+          <input type="number" id="fcrDSoCImpactFull" min="-10" max="10" step="0.1">
+        </label>
+        <label>
+          FCR-D Revenue per Sec Partial (EUR/s):
+          <input type="number" id="fcrDRevenuePerSecPartial" min="0" max="1000" step="0.1">
+        </label>
+        <label>
+          FCR-D Revenue per Sec Full (EUR/s):
+          <input type="number" id="fcrDRevenuePerSecFull" min="0" max="1000" step="0.1">
+        </label>
+      </section>
+      
+      <!-- FFR Parameters -->
+      <section>
+        <h3>FFR Parameters</h3>
+        <label>
+          FFR Activation Threshold (Hz):
+          <input type="number" id="ffrActivationThreshold" min="40" max="60" step="0.1">
+        </label>
+        <label>
+          FFR Activation Duration (seconds):
+          <input type="number" id="ffrActivationDuration" min="0" max="300" step="1">
+        </label>
+        <label>
+          FFR Support Duration (seconds):
+          <input type="number" id="ffrSupportDuration" min="0" max="300" step="1">
+        </label>
+        <label>
+          FFR Deactivation Time (seconds):
+          <input type="number" id="ffrDeactivationTime" min="0" max="300" step="1">
+        </label>
+        <label>
+          FFR Buffer Time (seconds):
+          <input type="number" id="ffrBufferTime" min="0" max="3600" step="1">
+        </label>
+        <label>
+          FFR Recovery Time (seconds):
+          <input type="number" id="ffrRecoveryTime" min="0" max="86400" step="1">
+        </label>
+      </section>
+      
+      <!-- Market Prices -->
+      <section>
+        <h3>Market Prices</h3>
+        <label>
+          Spot Price Night1 (EUR/kWh):
+          <input type="number" id="spotPriceNight1" min="0" max="10" step="0.0001">
+        </label>
+        <label>
+          Spot Price Morning Peak (EUR/kWh):
+          <input type="number" id="spotPriceMorningPeak" min="0" max="10" step="0.0001">
+        </label>
+        <label>
+          Spot Price Day (EUR/kWh):
+          <input type="number" id="spotPriceDay" min="0" max="10" step="0.0001">
+        </label>
+        <label>
+          Spot Price Night2 (EUR/kWh):
+          <input type="number" id="spotPriceNight2" min="0" max="10" step="0.0001">
+        </label>
+        <label>
+          Spot Price Clamp Min (EUR/kWh):
+          <input type="number" id="spotPriceClampMin" min="0" max="10" step="0.001">
+        </label>
+        <label>
+          Spot Price Clamp Max (EUR/kWh):
+          <input type="number" id="spotPriceClampMax" min="0" max="10" step="0.001">
+        </label>
+        <label>
+          Spot Price Imbalance Upper Scale (EUR/kWh per GW shortage):
+          <input type="number" id="spotPriceImbalanceUpperScale" min="0" max="10" step="0.001">
+        </label>
+        <label>
+          Spot Price Imbalance Lower Scale (EUR/kWh per GW surplus):
+          <input type="number" id="spotPriceImbalanceLowerScale" min="0" max="10" step="0.001">
+        </label>
+      </section>
+      
+      <!-- Battery Parameters -->
+      <section>
+        <h3>Battery Parameters</h3>
+        <label>
+          Battery Initial SoC (%):
+          <input type="number" id="batteryInitialSoC" min="0" max="100" step="1">
+        </label>
+        <label>
+          Battery Max SoC (%):
+          <input type="number" id="batteryMaxSoC" min="0" max="100" step="1">
+        </label>
+        <label>
+          Battery Min SoC (%):
+          <input type="number" id="batteryMinSoC" min="0" max="100" step="1">
+        </label>
+        <label>
+          Battery Cost per MWh (EUR):
+          <input type="number" id="batteryCostPerMWh" min="0" max="100" step="0.01">
+        </label>
+        <label>
+          Battery Income per MWh (EUR):
+          <input type="number" id="batteryIncomePerMWh" min="0" max="100" step="0.01">
+        </label>
+        <label>
+          Battery SoC Change per Discharge MWh (%):
+          <input type="number" id="batterySoCChangePerDischargeMWh" min="-100" max="100" step="0.1">
+        </label>
+        <label>
+          Battery SoC Change per Charge MWh (%):
+          <input type="number" id="batterySoCChangePerChargeMWh" min="-100" max="100" step="0.1">
+        </label>
+      </section>
+      
+      <!-- Buttons -->
+      <div class="settings-buttons">
+        <button id="saveSettings" class="save-button">Save</button>
+        <button id="resetSettings" class="reset-button">Reset</button>
+      </div>
+    </div>
+
     <!-- Game Container (Left) -->
     <div class="game-container">
 
@@ -23,47 +311,46 @@
             <button id="restartGame" class="button">Stop</button>
           </div>
           <div class="status-timer" id="timer">TIME LEFT: 3:00</div>
-          <div id="revenue" class="revenue">Revenue: $0</div>
+          <div id="revenue" class="revenue">Revenue: €0</div>
         </div>
       </div>
 
       <!-- Environment Stats -->
       <div class="environment-stats">
         <div class="generic-label">SPOT PRICE
-            <div id="spotPrice" class="data-item">€0.0555</div>
+          <div id="spotPrice" class="data-item">€0.0555</div>
+        </div>
+        <div class="generic-label">WHOLESALE PRICE
+          <div id="wholesalePrice" class="data-item">€0.02775</div>
+        </div>
+        <div class="generic-label">TIME OF DAY 
+          <div id="timeOfDay" class="data-item">06:00</div>
+        </div>
+        <div class="generic-label">TEMPERATURE
+          <div id="temperature" class="data-item">20°C</div>
+        </div>
+        <div class="generic-label">WIND
+          <div id="wind" class="data-item">5 m/s</div>
+        </div>
+        <div class="generic-label">SUN
+          <div id="sun" class="data-item">Partly Cloudy</div>
+        </div>
+        <div class="generic-label">WIND GENERATION
+          <div id="windGeneration" class="data-item">0 GW</div>
+        </div>
+        <div class="generic-label">PV GENERATION
+          <div id="pvGeneration" class="data-item">0 GW</div>
+        </div>
+        <div class="generic-label">TOTAL GENERATION
+          <div id="generation" class="data-item">40 GW</div>
+        </div>
+        <div class="generic-label">OTHER SOURCES
+          <div id="baselineGeneration" class="data-item">0 GW</div>
+        </div>
+        <div class="generic-label">DEMAND
+          <div id="demand" class="data-item">0 GW</div>
+        </div>
       </div>
-      <div class="generic-label">WHOLESALE PRICE
-            <div id="wholesalePrice" class="data-item">€0.02775</div>
-      </div>
-      <div class="generic-label">TIME OF DAY 
-        <div id="timeOfDay" class="data-item">06:00</div>
-      </div>
-            <div class="generic-label">TEMPERATURE
-                <div id="temperature" class="data-item">20°C</div>
-            </div>
-           <div class="generic-label">WIND
-                <div id="wind" class="data-item">5 m/s</div>
-          </div>
-          <div class="generic-label">SUN
-            <div id="sun" class="data-item">Partly Cloudy</div>
-          </div>
-          <div class="generic-label">WIND GENERATION
-            <div id="windGeneration" class="data-item">0 GW</div>
-          </div>
-          <div class="generic-label">PV GENERATION
-            <div id="pvGeneration" class="data-item">0 GW</div>
-          </div>
-          <div class="generic-label">OTHER SOURCES
-            <div id="baselineGeneration" class="data-item">0 GW</div>
-          </div>
-          <div class="generic-label">TOTAL GENERATION
-            <div id="generation" class="data-item">40 GW</div>
-          </div>
-          <div class="generic-label">DEMAND
-            <div id="demand" class="data-item">0 GW</div>
-          </div>
-      
-    </div>
 
       <!-- Frequency Display -->
       <div id="frequencyValue" class="frequency-value">50.00 Hz</div>
@@ -75,21 +362,18 @@
       <div id="gameConsole" class="game-console"></div>
 
       <!-- Battery Display -->
-    
-
-   <!-- battery-display wrapper -->
-   <div class="battery-display">
-    <div class="battery-container">
-      <div id="batterySoc" class="battery-soc"></div>
-      <div class="critical-line low"></div>
-      <div class="critical-line high"></div>
-    </div>
-    <div class="battery-info">
-      <div id="batteryLabel">50.0% State of Charge</div>
-      <div id="cycleCount">Battery Cycles: 0</div>
-      <div id="batteryWarning" class="battery-warning"></div>
-    </div>
-  </div>
+      <div class="battery-display">
+        <div class="battery-container">
+           <div id="batterySoc" class="battery-soc xbox-theme"></div>
+          <div class="critical-line low"></div>
+          <div class="critical-line high"></div>
+        </div>
+        <div class="battery-info">
+          <div id="batteryLabel">50.0% State of Charge</div>
+          <div id="cycleCount">Battery Cycles: 0</div>
+          <div id="batteryWarning" class="battery-warning"></div>
+        </div>
+      </div>
 
       <!-- Controls (FCR-D, FFR, charge, discharge) -->
       <div class="controls">
@@ -127,56 +411,66 @@
           <button id="discharge" class="button">Discharge Battery</button>
         </div>
       </div>
-
       
     </div>
 
     <!-- Info Pane (Right) -->
     <div class="info-pane">
-        <h2>How To Play</h2>
-        <p>
-          The objective is to keep the grid stable (near 50 Hz) by
-          participating in the balancing markets and earning revenue.
-        </p>
-        <p>
-          Use your battery's capacity to raise or lower the frequency.
-          Watch out for low/high SoC or excessive cycling!
-        </p>
-        <p>
-          You fail if the frequency goes beyond 49.5/50.5, or SoC <10% or >90%.
-          Survive 3 minutes and accumulate enough revenue to win!
-        </p>
-      
-        <!-- Collapsible Terms -->
-        <div class="accordion-item">
-          <button class="accordion-button" data-target="#fcrdContent">
-            FCR-D
-          </button>
-          <div id="fcrdContent" class="accordion-content">
-            <p>
-              FCR-D (Frequency Containment Reserve for Disturbances) is
-              a reserve product used to stabilize the grid when major frequency
-              deviations occur, typically outside 49.9-50.1 Hz. 
-            </p>
-          </div>
-        </div>
-      
-        <div class="accordion-item">
-          <button class="accordion-button" data-target="#fcrnContent">
-            FCR-N
-          </button>
-          <div id="fcrnContent" class="accordion-content">
-            <p>
-              FCR-N (Frequency Containment Reserve - Normal) maintains the
-              frequency continuously within a smaller band (49.9–50.1 Hz).
-              Assets automatically respond to minor deviations around 50 Hz.
-            </p>
-          </div>
+      <h2>How To Play</h2>
+      <p>
+        The objective is to keep the grid stable (near 50 Hz) by
+        participating in the balancing markets and earning revenue.
+      </p>
+      <p>
+        Use your battery's capacity to raise or lower the frequency.
+        Watch out for low/high SoC or excessive cycling!
+      </p>
+      <p>
+        You fail if the frequency goes beyond 49.5/50.5, or SoC <10% or >90%.
+        Survive 3 minutes and accumulate enough revenue to win!
+      </p>
+    
+      <!-- Collapsible Terms -->
+      <div class="accordion-item">
+        <button class="accordion-button" data-target="#fcrdContent">
+          FCR-D
+        </button>
+        <div id="fcrdContent" class="accordion-content">
+          <p>
+            FCR-D (Frequency Containment Reserve for Disturbances) is
+            a reserve product used to stabilize the grid when major frequency
+            deviations occur, typically outside 49.9-50.1 Hz. 
+          </p>
         </div>
       </div>
-      
+    
+      <div class="accordion-item">
+        <button class="accordion-button" data-target="#fcrnContent">
+          FCR-N
+        </button>
+        <div id="fcrnContent" class="accordion-content">
+          <p>
+            FCR-N (Frequency Containment Reserve - Normal) maintains the
+            frequency continuously within a smaller band (49.9–50.1 Hz).
+            Assets automatically respond to minor deviations around 50 Hz.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- External or inline JS -->
   <script src="game_logic.js"></script>
+  <script>
+    // Settings Panel Toggle
+    const settingsButton = document.getElementById('settingsButton');
+    const settingsPanel = document.getElementById('settingsPanel');
+
+    settingsButton.addEventListener('click', () => {
+      settingsPanel.classList.toggle('active');
+    });
+
+    
+  </script>
 </body>
 </html>
