@@ -1,407 +1,496 @@
 /*****************************************************
- * GLOBAL VARIABLES
+ * CONFIGURATION - GAMEPLAY VARIABLES
  *****************************************************/
 
-// ===============  GAME TIME  =================
-let timeRemaining = 180;               // 3 min real-time = 180s
-let timeOfDayMinutes = 0;              // 0..1440 (24h)
-const minutesPerSecond = 1440 / 180;   // 24h / 3min => 8 min per real second
+// =============== GAME TIME SETTINGS =================
+const GAME_DURATION_SECONDS = 180; // Total game duration in real seconds (3 minutes)
+const COMPRESSED_MINUTES_PER_SECOND = 1440 / GAME_DURATION_SECONDS; // 24h / 3min => 8 min per real second
 
-let currentSunCondition = "Dark";      // Store globally
-const possibleConditions = ["Sunny", "Partly Cloudy", "Cloudy"];
-let lastHourChecked = -1;
+// =============== ENVIRONMENT PARAMETERS =================
+const TEMPERATURE_AMPLITUDE = 10; // Amplitude for temperature oscillation (±10°C)
+const TEMPERATURE_MIDPOINT = 5; // Midpoint temperature (°C)
+const WIND_BASELINE_AMPLITUDE = 3; // Amplitude for wind speed oscillation (±3 m/s)
+const WIND_BASELINE_MIDPOINT = 5; // Midpoint wind speed (m/s)
+const WIND_SPEED_MAX = 10; // Maximum wind speed for power generation (m/s)
+const WIND_SPEED_MIN = 0; // Minimum wind speed (m/s)
 
-// ===============  FREQUENCY  =================
-let frequency = 50.0;
+const PV_GENERATION_MAX_GW = 5; // Maximum PV (solar) generation (GW)
+const WIND_GENERATION_MAX_GW = 10; // Maximum Wind generation (GW)
+const BASELINE_GENERATION_GW = 40; // Baseline generation from non-renewable sources (GW)
 
-// ===============  BATTERY  =================
-let soc = 50;                           // 0..100%
-let cycleCount = 0;                     // How many charge/discharge cycles used
-let revenue = 0;
-let gameActive = false;
+// =============== DEMAND PARAMETERS =================
+const DEMAND_BASE_GW = 50; // Baseline demand (GW)
+const DEMAND_PEAK_MULTIPLIER_MORNING = 1.2; // Morning peak demand multiplier
+const DEMAND_PEAK_MULTIPLIER_EVENING = 1.3; // Evening peak demand multiplier
+const DEMAND_TEMPERATURE_FACTOR = 1; // Demand increase per °C below 0°C
 
-// ===============  FCR / FFR  =================
-let fcrNToggled = false;    // Whether FCR-N is on
-let fcrDUpActive = false;   // Whether FCR-D Up is toggled
-let fcrDDownActive = false; // Whether FCR-D Down is toggled
-let ffrActive = false;      // Whether FFR is toggled
-let fcrNWasForcedOff = false;
+// =============== FREQUENCY PARAMETERS =================
+const FREQUENCY_BASE = 50.0; // Base frequency (Hz)
+const FREQUENCY_CHANGE_SCALING = 0.005; // Scaling factor for frequency change per GW imbalance
+const FREQUENCY_CLAMP = { // Frequency bounds to prevent extreme jumps
+  min: 49.0,
+  max: 51.0
+};
+const FREQUENCY_NOISE_RANGE = 0.02; // Random noise added to frequency (±0.02 Hz)
+
+// =============== FCR-N PARAMETERS =================
+const FCRN_SoC_MIN = 40; // Minimum State of Charge (%) to enable FCR-N
+const FCRN_SoC_MAX = 60; // Maximum State of Charge (%) to enable FCR-N
+const FCRN_FREQUENCY_RANGE = { // Frequency range to enable FCR-N
+  min: 49.5,
+  max: 50.5
+};
+const FCRN_REVENUE_PER_MW = 10; // Revenue earned per MW for FCR-N
+const FCRN_SOC_CHANGE_PER_MW = 0.3; // SoC change per MW commanded by FCR-N
+
+// =============== FCR-D PARAMETERS =================
+const FCRD_ACTIVATION_THRESHOLD = { // Frequency thresholds to activate FCR-D
+  up: 49.9, // Below this, FCR-D Up can activate
+  down: 50.1 // Above this, FCR-D Down can activate
+};
+const FCRD_RAMP_TIME_PARTIAL = 5; // Time in seconds to reach partial activation
+const FCRD_RAMP_TIME_FULL = 30; // Time in seconds to reach full activation
+const FCRD_FREQUENCY_IMPACT_PARTIAL = 0.03; // Frequency change per second at partial activation
+const FCRD_FREQUENCY_IMPACT_FULL = 0.06; // Frequency change per second at full activation
+const FCRD_SOC_IMPACT_PARTIAL = -1; // SoC change per second at partial activation
+const FCRD_SOC_IMPACT_FULL = -2; // SoC change per second at full activation
+const FCRD_REVENUE_PER_SEC_PARTIAL = 5; // Revenue per second at partial activation
+const FCRD_REVENUE_PER_SEC_FULL = 10; // Revenue per second at full activation
+
+// =============== FFR PARAMETERS =================
+const FFR_ACTIVATION_THRESHOLD = 49.7; // Frequency threshold to trigger FFR (Hz)
+const FFR_ACTIVATION_DURATION = 1.0; // Duration to activate FFR (seconds)
+const FFR_SUPPORT_DURATION = 1.0; // Support duration for FFR (seconds)
+const FFR_DEACTIVATION_TIME = 1.0; // Time to deactivate FFR (seconds)
+const FFR_BUFFER_TIME = 10.0; // Buffer time after deactivation (seconds)
+const FFR_RECOVERY_TIME = 900; // Recovery time after buffer (seconds)
+
+// =============== MARKET PRICES =================
+const SPOT_PRICE_BASE_RATES = { // Base spot prices based on time of day
+  night1: 0.0555, // 00:00-06:00 EUR/kWh
+  morningPeak: 0.011, // 06:00-09:00 EUR/kWh
+  day: 0.2, // 09:00-21:00 EUR/kWh
+  night2: 0.0084 // 21:00-24:00 EUR/kWh
+};
+const SPOT_PRICE_CLAMP = { // Spot price bounds
+  min: 0.005,
+  max: 0.5
+};
+const SPOT_PRICE_IMBALANCE_UPPER_SCALE = 0.05; // Spot price increase per GW shortage
+const SPOT_PRICE_IMBALANCE_LOWER_SCALE = 0.02; // Spot price decrease per GW surplus
+
+// =============== BATTERY PARAMETERS =================
+const BATTERY_INITIAL_SOC = 50; // Initial State of Charge (%)
+const BATTERY_MAX_SOC = 100; // Maximum SoC (%)
+const BATTERY_MIN_SOC = 0; // Minimum SoC (%)
+const BATTERY_COST_PER_MWH = 1; // Cost to charge per MWh
+const BATTERY_INCOME_PER_MWH = 0.5; // Income from discharge per MWh
+const BATTERY_SOC_CHANGE_PER_DISCHARGE_MWH = 5; // SoC change per discharge action
+const BATTERY_SOC_CHANGE_PER_CHARGE_MWH = 5; // SoC change per charge action
+
+// =============== UI PARAMETERS =================
+const UI_UPDATE_INTERVAL_MS = 1000; // UI update interval (milliseconds)
+
+/*****************************************************
+ * GLOBAL VARIABLES - GAME STATE
+ *****************************************************/
+
+// =============== GAME TIME =================
+let timeRemaining = GAME_DURATION_SECONDS; // Time left in the game (seconds)
+let timeOfDayMinutes = 0; // Current time of day in minutes (0..1440)
+
+// =============== ENVIRONMENT STATE =================
+let currentSunCondition = "Dark"; // Current sun condition
+let lastHourChecked = -1; // Last hour checked for sun condition updates
+let currentTemperature = 0; // Current temperature (°C)
+let currentWind = WIND_BASELINE_MIDPOINT; // Current wind speed (m/s)
+let currentDemand = DEMAND_BASE_GW; // Current power demand (GW)
+let currentGeneration = BASELINE_GENERATION_GW; // Current total power generation (GW)
+
+// =============== GENERATION STATE =================
+let windGenerationGW = 0; // Current wind power generation (GW)
+let pvGenerationGW = 0; // Current PV power generation (GW)
+
+// =============== FREQUENCY STATE =================
+let frequency = FREQUENCY_BASE; // Current grid frequency (Hz)
+
+// =============== BATTERY STATE =================
+let soc = BATTERY_INITIAL_SOC; // Current State of Charge (%)
+let cycleCount = 0; // Number of charge/discharge cycles used
+let revenue = 0; // Total revenue earned
+
+// =============== FCR / FFR STATE =================
+let fcrNToggled = false; // Whether FCR-N is active
+let fcrDUpActive = false; // Whether FCR-D Up is active
+let fcrDDownActive = false; // Whether FCR-D Down is active
+let ffrActive = false; // Whether FFR is active
+let fcrNWasForcedOff = false; // Whether FCR-N was forced off due to FCR-D activation
 
 // FCR-D States
-const FCRD_UP_STATE   = { INACTIVE: 'inactive', PARTIAL: 'partial', FULL: 'full' };
+const FCRD_UP_STATE = { INACTIVE: 'inactive', PARTIAL: 'partial', FULL: 'full' };
 const FCRD_DOWN_STATE = { INACTIVE: 'inactive', PARTIAL: 'partial', FULL: 'full' };
-let fcrDUpState   = FCRD_UP_STATE.INACTIVE;
+let fcrDUpState = FCRD_UP_STATE.INACTIVE;
 let fcrDDownState = FCRD_DOWN_STATE.INACTIVE;
-let fcrDUpTimer   = 0;
+let fcrDUpTimer = 0;
 let fcrDDownTimer = 0;
 
-// FFR
-let ffrState          = "idle";
-let ffrActivationTime = 0;
-let isBatteryAvailable  = true;       // Simple check for SoC constraints, etc.
-let isFfrProfileWindow = false;       // Night, weekend, or summer
-let isFfrFlexOrdered   = false;       // TSO order
+// FFR States
+let ffrState = "idle"; // Current FFR state
+let ffrActivationTime = 0; // Timer for FFR activation
+let isBatteryAvailable = true; // Whether the battery is available for FFR
+let isFfrProfileWindow = false; // Whether FFR profile window is active
+let isFfrFlexOrdered = false; // Whether FFR is flex-ordered by TSO
 
-// FFR config
-const ffrActivationThreshold = 49.7;
-const FFR_ACTIVATION_DURATION = 1.0;
-const FFR_SUPPORT_DURATION    = 1.0;
-const FFR_DEACTIVATION_TIME   = 1.0;
-const FFR_BUFFER_TIME         = 10.0;
-const FFR_RECOVERY_TIME       = 15 * 60;
-
-// ===============  MARKET PRICES  =================
-let currentSpotPrice = 0.0555;          // in EUR/kWh
-let currentWholesalePrice = 0.02775;
-
-// ===============  GENERATION  =================
-const baselineGenerationGW = 40;        // Baseline Generation from other sources (40 GW)
-let windGenerationGW = 0;                // Wind Power Generation in GW (0-10 GW)
-let pvGenerationGW = 0;                  // PV Power Generation in GW (0-5 GW)
-let currentGeneration = 0;               // Total Generation (GW)
-
-// ===============  DEMAND & GENERATION FACTORS  =================
-let currentTemperature = 0;
-let currentWind = 5;
-let currentSun = 0;
-let currentDemand = 0;
+// Current Prices
+let currentSpotPrice = 0;
+let currentWholesalePrice = 0;
 
 /*****************************************************
  * DOM ELEMENTS
  *****************************************************/
 const elements = {
-  frequencyArrow:    document.getElementById('frequencyArrow'),
-  frequencyValue:    document.getElementById('frequencyValue'),
-  batterySoc:        document.getElementById('batterySoc'),
-  batteryLabel:      document.getElementById('batteryLabel'),
-  status:            document.getElementById('status'),
-  timer:             document.getElementById('timer'),
-  revenue:           document.getElementById('revenue'),
-  cycleCount:        document.getElementById('cycleCount'),
-  lossMessage:       document.getElementById('lossMessage'),
-  batteryWarning:    document.getElementById('batteryWarning'),
-  timeOfDay:         document.getElementById('timeOfDay'),
-  temperature:       document.getElementById('temperature'),
-  wind:              document.getElementById('wind'),
-  sun:               document.getElementById('sun'),
-  spotPrice:         document.getElementById('spotPrice'),
-  wholesalePrice:    document.getElementById('wholesalePrice'),
-  gameConsole:       document.getElementById('gameConsole'),
-  
-  // New UI Elements for Generation
-  windGeneration:    document.getElementById('windGeneration'),
-  pvGeneration:      document.getElementById('pvGeneration'),
-  currentDemand:     document.getElementById('el-demand') 
-  // baselineGeneration: document.getElementById('baselineGeneration') // Optional
+  frequencyArrow: document.getElementById('frequencyArrow'),
+  frequencyValue: document.getElementById('frequencyValue'),
+  batterySoc: document.getElementById('batterySoc'),
+  batteryLabel: document.getElementById('batteryLabel'),
+  status: document.getElementById('status'),
+  timer: document.getElementById('timer'),
+  revenue: document.getElementById('revenue'),
+  cycleCount: document.getElementById('cycleCount'),
+  lossMessage: document.getElementById('lossMessage'),
+  batteryWarning: document.getElementById('batteryWarning'),
+  timeOfDay: document.getElementById('timeOfDay'),
+  temperature: document.getElementById('temperature'),
+  wind: document.getElementById('wind'),
+  sun: document.getElementById('sun'),
+  spotPrice: document.getElementById('spotPrice'),
+  wholesalePrice: document.getElementById('wholesalePrice'),
+  gameConsole: document.getElementById('gameConsole'),
+  demand: document.getElementById('demand'), // Newly added for currentDemand
+  generation: document.getElementById('generation'), // Newly added for currentGeneration
+  windGeneration: document.getElementById('windGeneration'),
+  pvGeneration: document.getElementById('pvGeneration'),
+  baselineGeneration: document.getElementById('baselineGeneration') // Optional
 };
 
 const buttons = {
-  startGame:   document.getElementById('startGame'),
+  startGame: document.getElementById('startGame'),
   restartGame: document.getElementById('restartGame'),
-  charge:      document.getElementById('charge'),
-  discharge:   document.getElementById('discharge')
+  charge: document.getElementById('charge'),
+  discharge: document.getElementById('discharge')
 };
 
-const fcrNToggleEl    = document.getElementById('fcrNToggle');
-const fcrDUpToggleEl  = document.getElementById('fcrDUpToggle');
-const fcrDDownToggleEl= document.getElementById('fcrDDownToggle');
-const ffrToggleEl     = document.getElementById('ffrToggle');
+const toggles = {
+  fcrNToggle: document.getElementById('fcrNToggle'),
+  fcrDUpToggle: document.getElementById('fcrDUpToggle'),
+  fcrDDownToggle: document.getElementById('fcrDDownToggle'),
+  ffrToggle: document.getElementById('ffrToggle')
+};
 
 /*****************************************************
  * LOG TO CONSOLE
  *****************************************************/
 function logToConsole(msg) {
-  if (!elements.gameConsole) return;
-  const line = document.createElement("div");
-  line.textContent = msg;
-  elements.gameConsole.appendChild(line);
-  elements.gameConsole.scrollTop = elements.gameConsole.scrollHeight;
+  if (elements.gameConsole) {
+    const line = document.createElement("div");
+    line.textContent = msg;
+    elements.gameConsole.appendChild(line);
+    elements.gameConsole.scrollTop = elements.gameConsole.scrollHeight;
+  }
+  
+  // Also log to the browser console for debugging
+  console.log(msg);
+}
+
+/*****************************************************
+ * HELPER FUNCTIONS
+ *****************************************************/
+
+/**
+ * Format time from minutes to "HH:MM" format.
+ * @param {number} tMinutes - Time in minutes.
+ * @returns {string} Formatted time string.
+ */
+function formatTime(tMinutes) {
+  const hours = Math.floor(tMinutes / 60) % 24;
+  const minutes = tMinutes % 60;
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
 }
 
 /*****************************************************
  * ENVIRONMENT CALCULATIONS
- * Smooth (sinusoidal) changes for temperature,
- * hour-to-hour changes for sun conditions,
- * and minute-to-minute smooth random walk for wind.
  *****************************************************/
 
 /**
- * Temperature: Coldest (~-5°C) at ~6 AM, peaks (~15°C) at ~3 PM
+ * Calculate temperature based on time of day.
+ * @param {number} tMinutes - Current time in minutes (0..1440).
+ * @returns {number} Temperature in °C.
  */
 function getTemperature(tMinutes) {
   const TWO_PI = 2 * Math.PI;
   const fractionOfDay = tMinutes / 1440; // 0..1
 
-  const amplitude = 10; // Half the range: (15 - (-5))/2=10
-  const midpoint  = 5;  // (15 + (-5))/2=5
-
-  // Minimum at ~5 AM (fractionOfDay ≈ 5/24 ≈ 0.2083)
-  const phaseShift = TWO_PI * 0.2083 + Math.PI / 2;
-
-  const radians = TWO_PI * fractionOfDay - phaseShift;
-  const temp = midpoint + amplitude * Math.sin(radians);
-
+  const temp = TEMPERATURE_MIDPOINT + TEMPERATURE_AMPLITUDE * Math.sin(TWO_PI * fractionOfDay - (TWO_PI * 0.2083 + Math.PI / 2));
+  
   return temp; // -5..15°C
 }
 
 /**
- * Sun Condition: Changes once per hour during daylight
+ * Update sun condition once per hour.
+ * @param {number} tMinutes - Current time in minutes (0..1440).
  */
 function maybeUpdateSunCondition(tMinutes) {
   const hour = Math.floor(tMinutes / 60);
   if (hour !== lastHourChecked) {
-    // Moved into a new hour
     lastHourChecked = hour;
 
     if (hour < 6 || hour >= 19) {
-      // Nighttime => Dark
+      // Nighttime
       currentSunCondition = "Dark";
     } else {
-      // Daytime => Randomly pick a condition
+      // Daytime: Randomly select sun condition
+      const possibleConditions = ["Sunny", "Partly Cloudy", "Cloudy"];
       const index = Math.floor(Math.random() * possibleConditions.length);
       currentSunCondition = possibleConditions[index];
     }
+
+    logToConsole(`Sun condition updated to: ${currentSunCondition}`);
   }
 }
 
 /**
- * Wind Generation: Smooth random walk around daily baseline
+ * Calculate base wind speed based on time of day.
+ * @param {number} tMinutes - Current time in minutes (0..1440).
+ * @returns {number} Base wind speed in m/s.
  */
 function getBaseWind(tMinutes) {
-  // Daily sinusoid: average=5 m/s, amplitude=3, 1 cycle per day
+  const TWO_PI = 2 * Math.PI;
   const fractionOfDay = tMinutes / 1440; // 0..1
-  const base = 5;
-  const amplitude = 3;
 
-  return base + amplitude * Math.sin(2 * Math.PI * fractionOfDay);
-}
-
-function updateWind(tMinutes) {
-  // 1) Get the daily baseline
-  const dailyBase = getBaseWind(tMinutes);
-
-  // 2) Generate a small random step: e.g., ±0.5 m/s
-  const delta = (Math.random() - 0.5) * 1.0; 
-    // => range ~ -0.5..+0.5 m/s
-
-  // 3) Pull currentWind ~30% toward dailyBase 
-  //    (prevents drifting infinitely from baseline)
-  currentWind += 0.3 * (dailyBase - currentWind);
-
-  // 4) Apply the random step
-  currentWind += delta;
-
-  // 5) Clamp wind to a reasonable range, e.g., 0..25 m/s
-  currentWind = Math.max(0, Math.min(25, currentWind));
-
-  // Logging for debugging
-  console.log(`Wind Speed: ${currentWind.toFixed(1)} m/s`);
+  const baseWind = WIND_BASELINE_MIDPOINT + WIND_BASELINE_AMPLITUDE * Math.sin(TWO_PI * fractionOfDay);
+  
+  return baseWind; // Varies smoothly over the day
 }
 
 /**
- * Calculate Demand based on time of day and temperature
+ * Update wind speed with a smooth random walk.
+ * @param {number} tMinutes - Current time in minutes (0..1440).
+ */
+function updateWind(tMinutes) {
+  const baseWind = getBaseWind(tMinutes);
+  
+  // Random step: ±0.5 m/s
+  const delta = (Math.random() - 0.5) * 1.0;
+  
+  // Smooth adjustment towards base wind
+  currentWind += 0.3 * (baseWind - currentWind) + delta;
+  
+  // Clamp wind speed to defined limits
+  currentWind = Math.max(WIND_SPEED_MIN, Math.min(WIND_SPEED_MAX, currentWind));
+  
+  logToConsole(`Wind speed updated to: ${currentWind.toFixed(1)} m/s`);
+}
+
+/**
+ * Calculate power demand based on time of day and temperature.
+ * @param {number} tMinutes - Current time in minutes (0..1440).
+ * @returns {number} Power demand in GW.
  */
 function calculateDemand(tMinutes) {
   const hour = Math.floor(tMinutes / 60);
   let peakFactor = 1;
 
   if (hour >= 6 && hour < 9) { // Morning peak
-    peakFactor = 1.2;
+    peakFactor = DEMAND_PEAK_MULTIPLIER_MORNING;
   } else if (hour >= 17 && hour < 20) { // Evening peak
-    peakFactor = 1.3;
-  } else {
-    peakFactor = 1;
+    peakFactor = DEMAND_PEAK_MULTIPLIER_EVENING;
   }
 
-  // Baseline demand is 50 GW, increases with colder temperatures
-  const tempFactor = (currentTemperature < 0) ? Math.abs(currentTemperature) : 0;
-  const demand = 50 * peakFactor + tempFactor;
-
-  // Logging for debugging
-  console.log(`Demand Calculation: Peak Factor=${peakFactor}, Temperature Factor=${tempFactor}, Total Demand=${demand} GW`);
-
+  // Demand increases by DEMAND_TEMPERATURE_FACTOR per °C below 0°C
+  const tempFactor = (currentTemperature < 0) ? Math.abs(currentTemperature) * DEMAND_TEMPERATURE_FACTOR : 0;
+  
+  const demand = DEMAND_BASE_GW * peakFactor + tempFactor;
+  
+  logToConsole(`Demand calculated: ${demand.toFixed(1)} GW (Peak Factor: ${peakFactor}, Temp Factor: ${tempFactor})`);
+  
   return demand;
 }
 
 /**
- * Update Environment: Temperature, Sun, Wind, Demand, Generation
+ * Update the environment: temperature, sun, wind, demand, and generation.
+ * @param {number} tMinutes - Current time in minutes (0..1440).
  */
 function updateEnvironment(tMinutes) {
-  // 1) TEMPERATURE
+  // Update temperature
   currentTemperature = getTemperature(tMinutes);
-
-  // 2) SUN CONDITION (hourly)
+  
+  // Update sun condition
   maybeUpdateSunCondition(tMinutes);
-  // Sets global currentSunCondition = "Dark" | "Sunny" | "Partly Cloudy" | "Cloudy"
-
-  // 3) WIND (random-walk around daily baseline)
+  
+  // Update wind speed
   updateWind(tMinutes);
-  // Updates global currentWind in a smooth manner
-
-  // 4) DEMAND & GENERATION
-  // Calculate Demand
+  
+  // Calculate demand
   currentDemand = calculateDemand(tMinutes);
+  
+  // Calculate power generation
+  windGenerationGW = Math.min(currentWind, WIND_GENERATION_MAX_GW); // 0-10 GW
+  pvGenerationGW = (currentSunCondition === "Sunny" ? 1 :
+                   currentSunCondition === "Partly Cloudy" ? 0.6 :
+                   currentSunCondition === "Cloudy" ? 0.3 : 0) * PV_GENERATION_MAX_GW; // 0-5 GW
+  currentGeneration = windGenerationGW + pvGenerationGW + BASELINE_GENERATION_GW; // Total generation
 
-  // Calculate Generation
-  // Wind Power Generation: 0-10 GW based on currentWind (0-10 m/s maps to 0-10 GW)
-  windGenerationGW = Math.min(currentWind, 10); // Caps at 10 GW
-
-  // PV Power Generation: 0-5 GW based on sun condition
-  let sunFactor = 0;
-  switch(currentSunCondition) {
-    case "Sunny":
-      sunFactor = 1; // 100% PV generation
-      break;
-    case "Partly Cloudy":
-      sunFactor = 0.6; // 60% PV generation
-      break;
-    case "Cloudy":
-      sunFactor = 0.3; // 30% PV generation
-      break;
-    case "Dark":
-    default:
-      sunFactor = 0; // 0% PV generation
-      break;
-  }
-  pvGenerationGW = sunFactor * 5; // 0..5 GW
-
-  // Total Generation
-  currentGeneration = windGenerationGW + pvGenerationGW + baselineGenerationGW; // 40 +0-10 +0-5 =40-55 GW
-
-  // Update Generation in UI
+  // Update UI elements
   elements.windGeneration.textContent = `${windGenerationGW.toFixed(1)} GW`;
-  elements.pvGeneration.textContent   = `${pvGenerationGW.toFixed(1)} GW`;
- // elements.currentDemand   = `${el-demand.toFixed(1)} GW`;
-  // elements.baselineGeneration.textContent = `${baselineGenerationGW.toFixed(1)} GW`; // Optional
-
-  // Logging for debugging
-  console.log(`Total Generation: ${currentGeneration} GW`);
+  elements.pvGeneration.textContent = `${pvGenerationGW.toFixed(1)} GW`;
+  elements.baselineGeneration.textContent = `${BASELINE_GENERATION_GW.toFixed(1)} GW`;
+  elements.demand.textContent = `${currentDemand.toFixed(1)} GW`;
+  elements.generation.textContent = `${currentGeneration.toFixed(1)} GW`;
+  
+  // Update additional UI elements
+  elements.timeOfDay.textContent = formatTime(timeOfDayMinutes);
+  elements.temperature.textContent = `${currentTemperature.toFixed(1)}°C`;
+  elements.wind.textContent = `${currentWind.toFixed(1)} m/s`;
+  elements.sun.textContent = currentSunCondition;
+  
+  logToConsole(`Environment updated: Time=${formatTime(tMinutes)}, Temp=${currentTemperature}°C, Wind=${currentWind} m/s, Sun=${currentSunCondition}`);
 }
 
 /*****************************************************
- * PRICES
- * Base spot price from time-of-day, plus factor in net imbalance
+ * MARKET PRICE CALCULATIONS
  *****************************************************/
+
+/**
+ * Determine base spot price based on time of day.
+ * @param {number} tMinutes - Current time in minutes (0..1440).
+ * @returns {number} Base spot price in EUR/kWh.
+ */
 function getBaseSpotPrice(tMinutes) {
-  // Example day-structure: 
-  //  00:00-06:00 => 0.0555 EUR/kWh
-  //  06:00-09:00 => 0.011 EUR/kWh
-  //  09:00-21:00 => 0.2 EUR/kWh
-  //  21:00-24:00 => 0.0084 EUR/kWh
-  if (tMinutes < 360)        return 0.0555;
-  else if (tMinutes < 540)   return 0.011;
-  else if (tMinutes < 1260)  return 0.2;
-  else                       return 0.0084;
+  if (tMinutes < 360) { // 00:00-06:00
+    return SPOT_PRICE_BASE_RATES.night1;
+  } else if (tMinutes < 540) { // 06:00-09:00
+    return SPOT_PRICE_BASE_RATES.morningPeak;
+  } else if (tMinutes < 1260) { // 09:00-21:00
+    return SPOT_PRICE_BASE_RATES.day;
+  } else { // 21:00-24:00
+    return SPOT_PRICE_BASE_RATES.night2;
+  }
 }
 
+/**
+ * Update market prices based on net imbalance.
+ * @param {number} tMinutes - Current time in minutes (0..1440).
+ */
 function updatePrices(tMinutes) {
-  let sp = getBaseSpotPrice(tMinutes);
-
-  // Net Imbalance: generation - demand
+  const baseSpotPrice = getBaseSpotPrice(tMinutes);
   const netImbalance = currentGeneration - currentDemand; // GW
 
-  // Adjust Spot Price based on Net Imbalance
-  // If netImbalance < 0 (shortage), price increases
-  // If netImbalance > 0 (surplus), price decreases
-  if (netImbalance < 0) {
-    sp += 0.05 * Math.abs(netImbalance) / 50;  // Scale for balance
-  } else {
-    sp -= 0.02 * netImbalance / 50;           // Scale for balance
+  let spotPrice = baseSpotPrice;
+
+  if (netImbalance < 0) { // Shortage
+    spotPrice += SPOT_PRICE_IMBALANCE_UPPER_SCALE * Math.abs(netImbalance) / 50;
+  } else { // Surplus
+    spotPrice -= SPOT_PRICE_IMBALANCE_LOWER_SCALE * netImbalance / 50;
   }
 
-  // Clamp Spot Price to a reasonable range
-  sp = Math.max(0.005, Math.min(0.5, sp));
+  // Clamp spot price
+  spotPrice = Math.max(SPOT_PRICE_CLAMP.min, Math.min(SPOT_PRICE_CLAMP.max, spotPrice));
 
-  // Update Current Prices
-  currentSpotPrice       = sp;
-  currentWholesalePrice  = sp * 0.5;
+  // Calculate wholesale price
+  const wholesalePrice = spotPrice * 0.5;
 
-  // Update DOM
-  elements.spotPrice.textContent      = `€${sp.toFixed(3)}`;
-  elements.wholesalePrice.textContent = `€${(sp * 0.5).toFixed(3)}`;
+  // Update global prices
+  currentSpotPrice = spotPrice;
+  currentWholesalePrice = wholesalePrice;
 
-  // Logging for debugging
-  console.log(`Spot Price: €${sp.toFixed(3)}/kWh, Wholesale Price: €${(sp * 0.5).toFixed(3)}/kWh`);
+  // Update UI elements
+  elements.spotPrice.textContent = `€${spotPrice.toFixed(3)}/kWh`;
+  elements.wholesalePrice.textContent = `€${wholesalePrice.toFixed(3)}/kWh`;
+
+  logToConsole(`Prices updated: Spot Price=${spotPrice.toFixed(3)} EUR/kWh, Wholesale Price=${wholesalePrice.toFixed(3)} EUR/kWh`);
 }
 
 /*****************************************************
- * FREQUENCY
- * Let net supply/demand push frequency up or down, plus random noise.
+ * FREQUENCY MANAGEMENT
  *****************************************************/
+
+/**
+ * Update grid frequency based on net imbalance.
+ */
+/**
+ * Update grid frequency based on net imbalance.
+ */
 function updateFrequency() {
-  const netImbalance = currentGeneration - currentDemand; // GW
-
-  // Scale imbalance to frequency change
-  // Increased scaling factor for more noticeable frequency changes
-  let freqChange = 0.005 * netImbalance; // 0.005 Hz per GW imbalance
-
-  // Clamp frequency change to prevent extreme jumps
-  freqChange = Math.max(-0.3, Math.min(0.3, freqChange));
-
-  // Update Frequency
-  frequency += freqChange;
-
-  // Add random noise for realism
-  frequency += (Math.random() - 0.5) * 0.02;
-
-  // Logging for debugging
-  console.log(`Frequency Change: ${freqChange.toFixed(3)} Hz, New Frequency: ${frequency.toFixed(2)} Hz`);
-}
+    const netImbalance = currentGeneration - currentDemand; // GW
+    
+    // Calculate frequency change
+    let freqChange = FREQUENCY_CHANGE_SCALING * netImbalance; // Hz
+  
+    // Clamp frequency change to prevent extreme jumps
+    freqChange = Math.max(-0.3, Math.min(0.3, freqChange));
+  
+    // Update frequency
+    frequency += freqChange;
+  
+    // Add random noise
+    frequency += (Math.random() - 0.5) * FREQUENCY_NOISE_RANGE;
+  
+    // **Remove the following line to allow frequency to go out of bounds**
+    // frequency = Math.max(FREQUENCY_CLAMP.min, Math.min(FREQUENCY_CLAMP.max, frequency));
+  
+    // Update UI
+    const arrowPos = ((frequency - FREQUENCY_CLAMP.min) / (FREQUENCY_CLAMP.max - FREQUENCY_CLAMP.min)) * 100;
+    elements.frequencyArrow.style.left = `${arrowPos}%`;
+    elements.frequencyValue.textContent = `${frequency.toFixed(2)} Hz`;
+  
+    logToConsole(`Frequency updated: ${frequency.toFixed(2)} Hz (Change: ${freqChange.toFixed(3)} Hz)`);
+  }
+  
 
 /*****************************************************
- * FCR-N LOGIC (Simplified)
+ * FREQUENCY CONTROL MECHANISMS
  *****************************************************/
+
+/**
+ * Update FCR-N.
+ */
 function updateFCRN() {
-  // If toggled OFF, do nothing
   if (!fcrNToggled) return;
 
-  // If SoC or freq is out of range or FCR-D is active => disable
+  // Check if conditions to disable FCR-N are met
   if (
-    soc < 40 || soc > 60 ||
-    frequency < 49.5 || frequency > 50.5 ||
-    fcrDDownActive || fcrDUpActive
+    soc < FCRN_SoC_MIN || soc > FCRN_SoC_MAX ||
+    frequency < FCRN_FREQUENCY_RANGE.min || frequency > FCRN_FREQUENCY_RANGE.max ||
+    fcrDUpActive || fcrDDownActive
   ) {
     if (fcrNToggled) {
-      fcrNWasForcedOff = fcrDDownActive || fcrDUpActive; // Forced by FCR-D
+      fcrNWasForcedOff = true;
       toggleFcrN(false);
-      logToConsole("FCR-N disabled (SoC/freq out of range or FCR-D active)");
+      logToConsole("FCR-N disabled due to SoC/frequency out of range or FCR-D active");
     }
     return;
   }
 
-  // If we reach here => FCR-N is ON, SoC is safe, freq is 49.5–50.5
-  // Slight correction proportional to freq deviation
-  const dev = frequency - 50.0;
-  let powerCommandMW = dev / 0.2; // ±1 MW at ±0.2 Hz
+  // Calculate power command based on frequency deviation
+  const freqDeviation = frequency - FREQUENCY_BASE; // Hz
+  let powerCommandMW = freqDeviation / 0.2; // ±1 MW at ±0.2 Hz
   powerCommandMW = Math.max(-1, Math.min(1, powerCommandMW));
 
-  // SoC usage
-  const socChange = powerCommandMW * 0.3; // e.g., ±0.3% SoC per second at ±1MW
-  soc = Math.max(0, Math.min(100, soc + socChange));
+  // Update State of Charge
+  soc = Math.max(0, Math.min(100, soc + powerCommandMW * FCRN_SOC_CHANGE_PER_MW));
 
-  // Revenue: base payment for regulation
-  revenue += 10 * Math.abs(powerCommandMW);
+  // Update frequency to simulate FCR-N response
+  frequency -= powerCommandMW * 0.02; // Frequency feedback
 
-  // Frequency feedback
-  frequency -= powerCommandMW * 0.02;
+  // Update revenue
+  revenue += Math.abs(powerCommandMW) * FCRN_REVENUE_PER_MW;
 
-  // Random noise
-  frequency += (Math.random() - 0.5) * 0.01;
-
-  // Cycle count if charging/discharging
-  if (Math.abs(powerCommandMW) > 0.05) {
-    cycleCount += 0.1;
-    logToConsole(`FCR-N adjusting: ${powerCommandMW.toFixed(2)} MW`);
-  }
-
-  // Logging for debugging
-  console.log(`FCR-N Power Command: ${powerCommandMW.toFixed(2)} MW, Frequency after FCR-N: ${frequency.toFixed(2)} Hz`);
+  // Logging
+  logToConsole(`FCR-N active: Power Command=${powerCommandMW.toFixed(2)} MW, SoC=${soc.toFixed(1)}%, Frequency=${frequency.toFixed(2)} Hz`);
 }
 
 /*****************************************************
- * FCR-D Up/Down LOGIC
- * For frequency <49.9 => FCR-D Up can ramp
- * For frequency >50.1 => FCR-D Down can ramp
+ * FCR-D LOGIC
  *****************************************************/
 function updateFCRDUp(deltaTime) {
   if (!fcrDUpActive) {
@@ -409,56 +498,58 @@ function updateFCRDUp(deltaTime) {
     return;
   }
 
-  if (frequency >= 49.9) {
+  if (frequency >= FCRD_ACTIVATION_THRESHOLD.up) {
     if (fcrDUpState !== FCRD_UP_STATE.INACTIVE) {
-      logToConsole("FCR-D Up deactivated (freq >= 49.9 Hz)");
+      logToConsole("FCR-D Up deactivated (frequency back to normal)");
     }
     fcrDUpState = FCRD_UP_STATE.INACTIVE;
     fcrDUpTimer = 0;
     return;
   }
 
-  // freq < 49.9
+  // Increment timer
   fcrDUpTimer += deltaTime;
-  if (fcrDUpTimer >= 30) {
+
+  // Determine activation state
+  if (fcrDUpTimer >= FCRD_RAMP_TIME_FULL) {
     if (fcrDUpState !== FCRD_UP_STATE.FULL) {
       fcrDUpState = FCRD_UP_STATE.FULL;
-      logToConsole("FCR-D Up full activation (100%)");
+      logToConsole("FCR-D Up fully activated");
     }
-  } else if (fcrDUpTimer >= 5) {
+  } else if (fcrDUpTimer >= FCRD_RAMP_TIME_PARTIAL) {
     if (fcrDUpState !== FCRD_UP_STATE.PARTIAL) {
       fcrDUpState = FCRD_UP_STATE.PARTIAL;
-      logToConsole("FCR-D Up partial activation (50%)");
+      logToConsole("FCR-D Up partially activated");
     }
   } else {
     if (fcrDUpState === FCRD_UP_STATE.INACTIVE) {
       fcrDUpState = FCRD_UP_STATE.PARTIAL;
-      logToConsole("FCR-D Up activation starting (ramp)");
+      logToConsole("FCR-D Up ramping up");
     }
   }
 
-  // Apply impacts
+  // Apply impacts based on activation state
   let freqImpact = 0;
-  let socImpact  = 0;
-  let revImpact  = 0;
+  let socImpact = 0;
+  let revImpact = 0;
   if (fcrDUpState === FCRD_UP_STATE.PARTIAL) {
-    freqImpact = 0.03 * deltaTime;
-    socImpact  = -1  * deltaTime;
-    revImpact  = 5   * deltaTime;
+    freqImpact = FCRD_FREQUENCY_IMPACT_PARTIAL * deltaTime;
+    socImpact = FCRD_SOC_IMPACT_PARTIAL * deltaTime;
+    revImpact = FCRD_REVENUE_PER_SEC_PARTIAL * deltaTime;
   } else if (fcrDUpState === FCRD_UP_STATE.FULL) {
-    freqImpact = 0.06 * deltaTime;
-    socImpact  = -2  * deltaTime;
-    revImpact  = 10  * deltaTime;
-  }
-  frequency += freqImpact;
-  soc = Math.max(0, Math.min(100, soc + socImpact));
-  revenue += revImpact;
-  if (fcrDUpState !== FCRD_UP_STATE.INACTIVE) {
-    cycleCount += 0.05 * deltaTime;
+    freqImpact = FCRD_FREQUENCY_IMPACT_FULL * deltaTime;
+    socImpact = FCRD_SOC_IMPACT_FULL * deltaTime;
+    revImpact = FCRD_REVENUE_PER_SEC_FULL * deltaTime;
   }
 
-  // Logging for debugging
-  console.log(`FCR-D Up State: ${fcrDUpState}, Frequency Change: ${freqImpact.toFixed(3)} Hz, SoC Change: ${socImpact.toFixed(1)}%, Revenue Change: €${revImpact.toFixed(2)}`);
+  // Update frequency and SoC
+  frequency += freqImpact;
+  soc = Math.max(0, Math.min(100, soc + socImpact));
+  
+  // Update revenue
+  revenue += revImpact;
+
+  logToConsole(`FCR-D Up: State=${fcrDUpState}, Frequency Change=${freqImpact.toFixed(3)} Hz, SoC Change=${socImpact.toFixed(1)}%, Revenue Change=€${revImpact.toFixed(2)}`);
 }
 
 function updateFCRDDown(deltaTime) {
@@ -467,104 +558,89 @@ function updateFCRDDown(deltaTime) {
     return;
   }
 
-  if (frequency <= 50.1) {
+  if (frequency <= FCRD_ACTIVATION_THRESHOLD.down) {
     if (fcrDDownState !== FCRD_DOWN_STATE.INACTIVE) {
-      logToConsole("FCR-D Down deactivated (freq <= 50.1 Hz)");
+      logToConsole("FCR-D Down deactivated (frequency back to normal)");
     }
     fcrDDownState = FCRD_DOWN_STATE.INACTIVE;
     fcrDDownTimer = 0;
     return;
   }
 
-  // freq > 50.1
+  // Increment timer
   fcrDDownTimer += deltaTime;
-  if (fcrDDownTimer >= 30) {
+
+  // Determine activation state
+  if (fcrDDownTimer >= FCRD_RAMP_TIME_FULL) {
     if (fcrDDownState !== FCRD_DOWN_STATE.FULL) {
       fcrDDownState = FCRD_DOWN_STATE.FULL;
-      logToConsole("FCR-D Down full activation (100%)");
+      logToConsole("FCR-D Down fully activated");
     }
-  } else if (fcrDDownTimer >= 5) {
+  } else if (fcrDDownTimer >= FCRD_RAMP_TIME_PARTIAL) {
     if (fcrDDownState !== FCRD_DOWN_STATE.PARTIAL) {
       fcrDDownState = FCRD_DOWN_STATE.PARTIAL;
-      logToConsole("FCR-D Down partial activation (50%)");
+      logToConsole("FCR-D Down partially activated");
     }
   } else {
     if (fcrDDownState === FCRD_DOWN_STATE.INACTIVE) {
       fcrDDownState = FCRD_DOWN_STATE.PARTIAL;
-      logToConsole("FCR-D Down activation starting (ramp)");
+      logToConsole("FCR-D Down ramping up");
     }
   }
 
-  // Apply impacts
+  // Apply impacts based on activation state
   let freqImpact = 0;
-  let socImpact  = 0;
-  let revImpact  = 0;
+  let socImpact = 0;
+  let revImpact = 0;
   if (fcrDDownState === FCRD_DOWN_STATE.PARTIAL) {
-    freqImpact = -0.03 * deltaTime;
-    socImpact  = +1   * deltaTime;
-    revImpact  = 5    * deltaTime;
+    freqImpact = FCRD_FREQUENCY_IMPACT_PARTIAL * deltaTime;
+    socImpact = FCRD_SOC_IMPACT_PARTIAL * deltaTime;
+    revImpact = FCRD_REVENUE_PER_SEC_PARTIAL * deltaTime;
   } else if (fcrDDownState === FCRD_DOWN_STATE.FULL) {
-    freqImpact = -0.06 * deltaTime;
-    socImpact  = +2   * deltaTime;
-    revImpact  = 10   * deltaTime;
-  }
-  frequency += freqImpact;
-  soc = Math.max(0, Math.min(100, soc + socImpact));
-  revenue += revImpact;
-  if (fcrDDownState !== FCRD_DOWN_STATE.INACTIVE) {
-    cycleCount += 0.05 * deltaTime;
+    freqImpact = FCRD_FREQUENCY_IMPACT_FULL * deltaTime;
+    socImpact = FCRD_SOC_IMPACT_FULL * deltaTime;
+    revImpact = FCRD_REVENUE_PER_SEC_FULL * deltaTime;
   }
 
-  // Logging for debugging
-  console.log(`FCR-D Down State: ${fcrDDownState}, Frequency Change: ${freqImpact.toFixed(3)} Hz, SoC Change: ${socImpact.toFixed(1)}%, Revenue Change: €${revImpact.toFixed(2)}`);
+  // Update frequency and SoC
+  frequency += freqImpact;
+  soc = Math.max(0, Math.min(100, soc + socImpact));
+  
+  // Update revenue
+  revenue += revImpact;
+
+  logToConsole(`FCR-D Down: State=${fcrDDownState}, Frequency Change=${freqImpact.toFixed(3)} Hz, SoC Change=${socImpact.toFixed(1)}%, Revenue Change=€${revImpact.toFixed(2)}`);
 }
 
 /*****************************************************
  * FFR LOGIC
  *****************************************************/
-function checkFfrProfileWindow() {
-  // Example: night + weekends => on. (Simplified approach)
-  const hour = Math.floor(timeOfDayMinutes / 60);
-  const dayOfWeek = 3; // Placeholder: 0=Sunday, 6=Saturday
-  const night = (hour >= 22 || hour < 7);
-  const weekend = (dayOfWeek === 0 || dayOfWeek === 6);
-  return (night || weekend);
-}
-
-function checkFfrFlexOrdered() {
-  // Stub: always false unless you have a schedule
-  return false;
-}
-
 function updateFFR(deltaTimeSec) {
+  // Check if FFR can be activated
   isFfrProfileWindow = checkFfrProfileWindow();
-  isFfrFlexOrdered   = checkFfrFlexOrdered();
-  
+  isFfrFlexOrdered = checkFfrFlexOrdered();
+
   if (!isBatteryAvailable) {
     ffrState = "idle";
     return;
   }
-  
-  const ffrAvailable = (isFfrProfileWindow || isFfrFlexOrdered);
 
-  if (frequency < ffrActivationThreshold && ffrState === "idle" && ffrAvailable) {
+  const ffrAvailable = isFfrProfileWindow || isFfrFlexOrdered;
+
+  if (frequency < FFR_ACTIVATION_THRESHOLD && ffrState === "idle" && ffrAvailable) {
     ffrState = "activated";
     ffrActive = true;
     ffrActivationTime = 0;
-    logToConsole(`FFR triggered at freq=${frequency.toFixed(2)} Hz`);
-    console.log(`FFR triggered at freq=${frequency.toFixed(2)} Hz`);
+    logToConsole(`FFR activated at frequency ${frequency.toFixed(2)} Hz`);
   }
 
   switch(ffrState) {
     case "activated":
       ffrActivationTime += deltaTimeSec;
-      if (ffrActivationTime <= (FFR_ACTIVATION_DURATION + FFR_SUPPORT_DURATION)) {
-        // Deliver FFR power...
-      } else {
+      if (ffrActivationTime >= FFR_ACTIVATION_DURATION + FFR_SUPPORT_DURATION) {
         ffrState = "deactivating";
         ffrActivationTime = 0;
-        logToConsole("FFR deactivation begun");
-        console.log("FFR deactivation begun");
+        logToConsole("FFR deactivating");
       }
       break;
     case "deactivating":
@@ -573,7 +649,6 @@ function updateFFR(deltaTimeSec) {
         ffrState = "buffer";
         ffrActivationTime = 0;
         logToConsole("FFR buffer period started");
-        console.log("FFR buffer period started");
       }
       break;
     case "buffer":
@@ -581,8 +656,7 @@ function updateFFR(deltaTimeSec) {
       if (ffrActivationTime >= FFR_BUFFER_TIME) {
         ffrState = "recovering";
         ffrActivationTime = 0;
-        logToConsole("FFR recovery started (15min)");
-        console.log("FFR recovery started (15min)");
+        logToConsole("FFR recovering");
       }
       break;
     case "recovering":
@@ -590,8 +664,7 @@ function updateFFR(deltaTimeSec) {
       if (ffrActivationTime >= FFR_RECOVERY_TIME) {
         ffrState = "idle";
         ffrActive = false;
-        logToConsole("FFR fully recovered, back to idle");
-        console.log("FFR fully recovered, back to idle");
+        logToConsole("FFR fully recovered and idle");
       }
       break;
     default:
@@ -600,49 +673,73 @@ function updateFFR(deltaTimeSec) {
   }
 }
 
+/**
+ * Check if current time is within FFR profile window.
+ * @returns {boolean} True if within profile window, else false.
+ */
+function checkFfrProfileWindow() {
+  // Example condition: night time (22:00-07:00) or weekends
+  const hour = Math.floor(timeOfDayMinutes / 60);
+  const dayOfWeek = 3; // Placeholder: 0=Sunday, 6=Saturday
+  const night = (hour >= 22 || hour < 7);
+  const weekend = (dayOfWeek === 0 || dayOfWeek === 6);
+  return (night || weekend);
+}
+
+/**
+ * Check if FFR is flex-ordered by TSO.
+ * @returns {boolean} True if flex-ordered, else false.
+ */
+function checkFfrFlexOrdered() {
+  // Placeholder: Implement actual logic or schedule
+  return false;
+}
+
 /*****************************************************
- * MAIN LOOP
+ * MAIN GAME LOOP
  *****************************************************/
 let mainLoop = null;
+let gameActive = false; // Indicates whether the game is active
+
 function startMainLoop() {
   clearInterval(mainLoop);
   mainLoop = setInterval(() => {
     if (!gameActive) return;
 
     // 1) Advance compressed "day" time
-    timeOfDayMinutes += minutesPerSecond;
+    timeOfDayMinutes += COMPRESSED_MINUTES_PER_SECOND;
     if (timeOfDayMinutes >= 1440) {
-      timeOfDayMinutes -= 1440; // Wrap next day
+      timeOfDayMinutes -= 1440; // Wrap to next day
     }
 
-    // 2) Update environment (temp, wind, sun => demand & generation)
+    // 2) Update environment
     updateEnvironment(timeOfDayMinutes);
 
-    // 3) Update frequency from net supply/demand
+    // 3) Update frequency based on net imbalance
     updateFrequency();
 
-    // 4) Update FCR-N in the same timescale
+    // 4) Update FCR-N
     updateFCRN();
 
-    // 5) Update FCR-D Up / Down
-    updateFCRDUp(1);     // Pass deltaTime=1 second
-    updateFCRDDown(1);
+    // 5) Update FCR-D Up and Down
+    updateFCRDUp(1); // deltaTime = 1 second
+    updateFCRDDown(1); // deltaTime = 1 second
 
     // 6) Update FFR
     if (ffrActive) {
-      updateFFR(1); 
+      updateFFR(1);
     }
 
-    // 7) Update prices
+    // 7) Update market prices
     updatePrices(timeOfDayMinutes);
 
     // 8) Update UI
     updateUI();
 
-    // 9) Check game over
+    // 9) Check for game over conditions
     checkGameOver();
 
-    // 10) Decrement timeRemaining
+    // 10) Decrement remaining time
     timeRemaining--;
     if (timeRemaining <= 0) {
       gameActive = false;
@@ -651,225 +748,286 @@ function startMainLoop() {
       clearInterval(mainLoop);
     }
 
-  }, 1000);
+  }, UI_UPDATE_INTERVAL_MS);
 }
 
 /*****************************************************
- * UI & GAME OVER
+ * UI AND GAME OVER LOGIC
  *****************************************************/
+
+/**
+ * Update all UI elements.
+ */
 function updateUI() {
-  // Frequency meter
-  const arrowPos = Math.min(100, Math.max(0, ((frequency - 49.5) / 1.0) * 100));
-  elements.frequencyArrow.style.left = arrowPos + "%";
-  elements.frequencyValue.textContent = frequency.toFixed(2) + " Hz";
+  // Frequency is updated within updateFrequency()
 
-  // Battery
-  elements.batterySoc.style.height = soc + "%";
-  elements.batterySoc.style.background = (soc > 90 || soc < 10) ? 'red' : 'blue';
-  elements.batteryLabel.textContent = soc.toFixed(1) + "% State of Charge";
+  // Update battery SoC display
+  elements.batterySoc.style.height = `${soc}%`;
+  elements.batterySoc.style.backgroundColor = (soc > 90 || soc < 10) ? 'red' : 'blue';
+  elements.batteryLabel.textContent = `${soc.toFixed(1)}% State of Charge`;
 
-  // Revenue, cycles
-  elements.revenue.textContent = "EUR Earned " + revenue.toFixed(2);
-  elements.cycleCount.textContent = "Battery Cycles: " + cycleCount.toFixed(1);
+  // Update revenue and cycle count
+  elements.revenue.textContent = `EUR Earned: €${revenue.toFixed(2)}`;
+  elements.cycleCount.textContent = `Battery Cycles: ${cycleCount.toFixed(1)}`;
 
-  // Timer
+  // Update time remaining
   const minutes = Math.floor(timeRemaining / 60);
-  const seconds = (timeRemaining % 60).toString().padStart(2,"0");
+  const seconds = String(timeRemaining % 60).padStart(2, '0');
   elements.timer.textContent = `TIME LEFT: ${minutes}:${seconds}`;
 
-  // Update Generation in UI
-  elements.windGeneration.textContent = `${windGenerationGW.toFixed(1)} GW`;
-  elements.pvGeneration.textContent   = `${pvGenerationGW.toFixed(1)} GW`;
- // elements.baselineGeneration.textContent = `${baselineGenerationGW.toFixed(1)} GW`; // Optional
+  // Other UI elements (demand, generation) are updated within respective functions
 
-  // Clear warning
-  elements.batteryWarning.textContent = "";
+  // Log UI update
+  logToConsole(`UI Updated: SoC=${soc}%, Revenue=€${revenue}, Cycles=${cycleCount}, Time Left=${minutes}:${seconds}`);
 }
 
+/**
+ * Check if game over conditions are met.
+ */
 function checkGameOver() {
-  if (
-    frequency < 49.5 || frequency > 50.5 ||
-    soc < 10 || soc > 90 ||
-    cycleCount > 30
-  ) {
+  const frequencyOutOfBounds = (frequency < FREQUENCY_CLAMP.min || frequency > FREQUENCY_CLAMP.max);
+  const socOutOfBounds = (soc < BATTERY_MIN_SOC || soc > BATTERY_MAX_SOC);
+  const excessiveCycles = (cycleCount > 30);
+
+  if (frequencyOutOfBounds || socOutOfBounds || excessiveCycles) {
     gameActive = false;
     elements.lossMessage.textContent = "You failed! Game over!";
-    clearInterval(mainLoop);
     logToConsole("Game Over: You failed!");
-    console.log("Game Over: You failed!");
-  } else if (timeRemaining <= 0) {
+    clearInterval(mainLoop);
+    return;
+  }
+
+  if (timeRemaining <= 0) {
     gameActive = false;
-    if (revenue < 50) {
+    if (revenue >= 50) {
+      elements.lossMessage.textContent = "You did it! Congratulations!";
+      logToConsole("Game Over: You did it!");
+    } else {
       elements.lossMessage.textContent = "You failed! Game over!";
       logToConsole("Game Over: You failed!");
-      console.log("Game Over: You failed!");
-    } else {
-      elements.lossMessage.textContent = "You did it!";
-      logToConsole("Game Over: You did it!");
-      console.log("Game Over: You did it!");
     }
     clearInterval(mainLoop);
+    return;
   }
+
+  // Optionally, add other win conditions
 }
 
 /*****************************************************
- * TOGGLES
+ * TOGGLE AND BUTTON EVENT HANDLERS
  *****************************************************/
-fcrNToggleEl.onchange = () => {
-  if (fcrNToggleEl.checked) {
+
+/**
+ * Handle FCR-N toggle.
+ */
+toggles.fcrNToggle.onchange = () => {
+  if (toggles.fcrNToggle.checked) {
     toggleFcrN(true);
   } else {
     toggleFcrN(false);
   }
 };
+
 function toggleFcrN(state) {
   fcrNToggled = state;
   if (fcrNToggled) {
-    logToConsole("FCR-N ON");
-    console.log("FCR-N ON");
+    logToConsole("FCR-N activated");
   } else {
-    logToConsole("FCR-N OFF");
-    console.log("FCR-N OFF");
+    logToConsole("FCR-N deactivated");
   }
 }
 
-fcrDUpToggleEl.onchange = () => {
-  if (fcrDUpToggleEl.checked) {
-    fcrDUpActive = true;
-    logToConsole("FCR-D Up ON");
-    console.log("FCR-D Up ON");
-    // Force FCR-N off if needed
-    if (fcrNToggled) {
-      fcrNWasForcedOff = true;
-      toggleFcrN(false);
-      logToConsole("FCR-N disabled (FCR-D Up is active)");
-      console.log("FCR-N disabled (FCR-D Up is active)");
-    }
+/**
+ * Handle FCR-D Up toggle.
+ */
+toggles.fcrDUpToggle.onchange = () => {
+  if (toggles.fcrDUpToggle.checked) {
+    activateFcrDUp(true);
   } else {
-    fcrDUpActive = false;
-    logToConsole("FCR-D Up OFF");
-    console.log("FCR-D Up OFF");
-    fcrDUpState = FCRD_UP_STATE.INACTIVE;
-    fcrDUpTimer = 0;
-    // Re-enable FCR-N if forced
-    if (fcrNWasForcedOff && soc >= 40 && soc <= 60 && frequency >= 49.5 && frequency <= 50.5) {
-      fcrNWasForcedOff = false;
-      toggleFcrN(true);
-      logToConsole("FCR-N re-enabled after FCR-D Up off");
-      console.log("FCR-N re-enabled after FCR-D Up off");
-    }
+    activateFcrDUp(false);
   }
 };
 
-fcrDDownToggleEl.onchange = () => {
-  if (fcrDDownToggleEl.checked) {
-    fcrDDownActive = true;
-    logToConsole("FCR-D Down ON");
-    console.log("FCR-D Down ON");
-    // Force FCR-N off if needed
+function activateFcrDUp(state) {
+  fcrDUpActive = state;
+  if (fcrDUpActive) {
+    logToConsole("FCR-D Up activated");
+    // Force FCR-N off if active
     if (fcrNToggled) {
-      fcrNWasForcedOff = true;
       toggleFcrN(false);
-      logToConsole("FCR-N disabled (FCR-D Down is active)");
-      console.log("FCR-N disabled (FCR-D Down is active)");
+      fcrNWasForcedOff = true;
+      logToConsole("FCR-N forced off due to FCR-D Up activation");
     }
   } else {
-    fcrDDownActive = false;
-    logToConsole("FCR-D Down OFF");
-    console.log("FCR-D Down OFF");
-    fcrDDownState = FCRD_DOWN_STATE.INACTIVE;
-    fcrDDownTimer = 0;
-    // Re-enable FCR-N if forced
-    if (fcrNWasForcedOff && soc >= 40 && soc <= 60 && frequency >= 49.5 && frequency <= 50.5) {
-      fcrNWasForcedOff = false;
+    logToConsole("FCR-D Up deactivated");
+    // Re-enable FCR-N if it was forced off and conditions are met
+    if (fcrNWasForcedOff && soc >= FCRN_SoC_MIN && soc <= FCRN_SoC_MAX && frequency >= FCRN_FREQUENCY_RANGE.min && frequency <= FCRN_FREQUENCY_RANGE.max) {
       toggleFcrN(true);
-      logToConsole("FCR-N re-enabled after FCR-D Down off");
-      console.log("FCR-N re-enabled after FCR-D Down off");
+      fcrNWasForcedOff = false;
+      logToConsole("FCR-N reactivated after FCR-D Up deactivation");
     }
+  }
+}
+
+/**
+ * Handle FCR-D Down toggle.
+ */
+toggles.fcrDDownToggle.onchange = () => {
+  if (toggles.fcrDDownToggle.checked) {
+    activateFcrDDown(true);
+  } else {
+    activateFcrDDown(false);
   }
 };
 
-ffrToggleEl.onchange = () => {
-  if (ffrToggleEl.checked) {
+function activateFcrDDown(state) {
+  fcrDDownActive = state;
+  if (fcrDDownActive) {
+    logToConsole("FCR-D Down activated");
+    // Force FCR-N off if active
+    if (fcrNToggled) {
+      toggleFcrN(false);
+      fcrNWasForcedOff = true;
+      logToConsole("FCR-N forced off due to FCR-D Down activation");
+    }
+  } else {
+    logToConsole("FCR-D Down deactivated");
+    // Re-enable FCR-N if it was forced off and conditions are met
+    if (fcrNWasForcedOff && soc >= FCRN_SoC_MIN && soc <= FCRN_SoC_MAX && frequency >= FCRN_FREQUENCY_RANGE.min && frequency <= FCRN_FREQUENCY_RANGE.max) {
+      toggleFcrN(true);
+      fcrNWasForcedOff = false;
+      logToConsole("FCR-N reactivated after FCR-D Down deactivation");
+    }
+  }
+}
+
+/**
+ * Handle FFR toggle.
+ */
+toggles.ffrToggle.onchange = () => {
+  if (toggles.ffrToggle.checked) {
     ffrActive = true;
-    logToConsole("FFR ON");
-    console.log("FFR ON");
+    logToConsole("FFR activated");
   } else {
     ffrActive = false;
-    logToConsole("FFR OFF");
-    console.log("FFR OFF");
+    logToConsole("FFR deactivated");
   }
-};
+}
 
-/*****************************************************
- * ACTION BUTTONS
- *****************************************************/
+/**
+ * Handle Start Game button.
+ */
 buttons.startGame.onclick = () => {
   if (!gameActive) {
-    elements.lossMessage.textContent = "";
     gameActive = true;
-    // Reset certain values if needed
-    // Start main loop if not already running
-    timeRemaining = 180; 
+    timeRemaining = GAME_DURATION_SECONDS;
+    timeOfDayMinutes = 0;
+    soc = BATTERY_INITIAL_SOC;
+    cycleCount = 0;
+    revenue = 0;
+    fcrNToggled = false;
+    fcrDUpActive = false;
+    fcrDDownActive = false;
+    ffrActive = false;
+    currentWind = WIND_BASELINE_MIDPOINT;
+    currentSunCondition = "Dark";
+    lastHourChecked = -1;
+    currentDemand = DEMAND_BASE_GW;
+    currentGeneration = BASELINE_GENERATION_GW;
+    frequency = FREQUENCY_BASE;
+
+    // Reset UI
+    updateUI();
+    elements.lossMessage.textContent = "";
+
+    // Start the main loop
     startMainLoop();
     logToConsole("Game started");
-    console.log("Game started");
   }
 };
 
+/**
+ * Handle Restart Game button.
+ */
 buttons.restartGame.onclick = () => {
   gameActive = false;
   clearInterval(mainLoop);
-  // Reset state
-  frequency = 50;
-  soc = 50;
-  revenue = 0;
+
+  // Reset all states to initial values
+  timeRemaining = GAME_DURATION_SECONDS;
+  timeOfDayMinutes = 0;
+  soc = BATTERY_INITIAL_SOC;
   cycleCount = 0;
-  windGenerationGW = 0;
-  pvGenerationGW = 0;
-  timeRemaining = 180;
+  revenue = 0;
   fcrNToggled = false;
   fcrDUpActive = false;
   fcrDDownActive = false;
   ffrActive = false;
-  currentWind = 5;
+  currentWind = WIND_BASELINE_MIDPOINT;
   currentSunCondition = "Dark";
   lastHourChecked = -1;
-  currentGeneration = baselineGenerationGW; // Initialize with baseline
-  currentDemand = 50; // Initial demand
+  currentDemand = DEMAND_BASE_GW;
+  currentGeneration = BASELINE_GENERATION_GW;
+  frequency = FREQUENCY_BASE;
+
+  // Reset UI
+  updateUI();
   elements.lossMessage.textContent = "";
-  updateUI();
+
   logToConsole("Game restarted & state reset");
-  console.log("Game restarted & state reset");
 };
 
+/**
+ * Handle Battery Charge button.
+ */
 buttons.charge.onclick = () => {
-  // 50 kW for 1 second => 0.05 MWh
-  const MWhPerPress = 0.05;
-  const cost = MWhPerPress * currentSpotPrice;
-  frequency += 0.1; // Small upward freq effect
-  soc = Math.min(100, soc + 5);
+  if (soc >= BATTERY_MAX_SOC) {
+    logToConsole("Battery is already fully charged.");
+    return;
+  }
+
+  // Calculate cost
+  const cost = BATTERY_COST_PER_MWH * 0.05; // 50 kW for 1 second => 0.05 MWh
+
+  // Update SoC and revenue
+  soc = Math.min(BATTERY_MAX_SOC, soc + BATTERY_SOC_CHANGE_PER_CHARGE_MWH);
   revenue -= cost;
-  cycleCount += 1; 
-  logToConsole(`Battery charged, cost €${cost.toFixed(4)}`);
-  console.log(`Battery charged, cost €${cost.toFixed(4)}`);
+  cycleCount += 1;
+
+  // Impact frequency
+  frequency += 0.1; // Small upward frequency impact
+
+  // Update UI
   updateUI();
+  logToConsole(`Battery charged: Cost €${cost.toFixed(4)}, SoC=${soc.toFixed(1)}%`);
 };
 
+/**
+ * Handle Battery Discharge button.
+ */
 buttons.discharge.onclick = () => {
-  // 50 kW for 1 second => 0.05 MWh
-  const MWhPerPress = 0.05;
-  const income = MWhPerPress * currentWholesalePrice;
-  frequency -= 0.1; // Small downward freq effect
-  soc = Math.max(0, soc - 5);
+  if (soc <= BATTERY_MIN_SOC) {
+    logToConsole("Battery is already fully discharged.");
+    return;
+  }
+
+  // Calculate income
+  const income = BATTERY_INCOME_PER_MWH * 0.05; // 50 kW for 1 second => 0.05 MWh
+
+  // Update SoC and revenue
+  soc = Math.max(BATTERY_MIN_SOC, soc - BATTERY_SOC_CHANGE_PER_DISCHARGE_MWH);
   revenue += income;
   cycleCount += 1;
-  logToConsole(`Battery discharged, earned €${income.toFixed(4)}`);
-  console.log(`Battery discharged, earned €${income.toFixed(4)}`);
+
+  // Impact frequency
+  frequency -= 0.1; // Small downward frequency impact
+
+  // Update UI
   updateUI();
+  logToConsole(`Battery discharged: Earned €${income.toFixed(4)}, SoC=${soc.toFixed(1)}%`);
 };
 
 /*****************************************************
- * INIT UI
+ * INITIALIZE UI
  *****************************************************/
 updateUI();
