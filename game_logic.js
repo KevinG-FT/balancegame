@@ -1069,15 +1069,15 @@ const introPanel = document.getElementById('introPanel');
 const introToggleButton = document.getElementById('introToggleButton');
 
 function openIntroPanel() {
-  introPanel.classList.add('active');
-}
-
-function closeIntroPanel() {
-  introPanel.classList.remove('active');
-}
-
-// If you want the panel open by default on load, call openIntroPanel() here:
-// openIntroPanel();
+    introPanel.classList.add('active');
+    introToggleButton.classList.add('close-mode');
+    introToggleButton.textContent = "✕";
+  }
+  function closeIntroPanel() {
+    introPanel.classList.remove('active');
+    introToggleButton.classList.remove('close-mode');
+    introToggleButton.textContent = "About the Game";
+  }
 
 if (introToggleButton) {
   introToggleButton.addEventListener('click', () => {

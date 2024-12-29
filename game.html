@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <!-- Google Fonts for enhanced typography -->
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Audiowide&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <meta name="viewport" content="width=device-width,initial-scale=1.0" />
   <title>Balancing Market Game</title>
@@ -15,10 +16,15 @@
         <div class="intro-content">
         <h2>Welcome to the Balancing Market Game!</h2>
         <p>
-            This is a brief introduction to the game. 
-            Learn about the objectives, how to keep the frequency in balance,
-            and how to manage your resources for optimal performance.
-        </p>
+            The mythical island nation of Canario is on a journey to transition away from fossil fuels to reach a 100% renewable energy target. They have introduced significant wind and solar generation capacity but is still reliant on gas to meet its energy needs. 
+             </p>
+            <p>
+            You are the owner and operator of a battery that is connected to the Canario Island grid. Your initial goal is to balance the grid by managing your battery storage system and participating in the Nordic balancing markets. Ultimately, you want to add additional battery capacity such that Canario Island can safely dimension up its wind and solar generation and completely phase out gas.
+            <p>
+            Canario Island  Your decisions will help the island achieve this goal while maintaining grid stability.
+             </p>
+            
+        <img src="./res/canario-island.png" alt="Canario Island" style="width: 350px;" />
     </div>
   </div>
   <!-- A small button to toggle the Intro Panel -->
@@ -386,13 +392,17 @@
 
       <!-- Battery Display -->
       <div class="battery-display">
-        <div class="battery-container">
-          <div id="batterySoc" class="battery-soc xbox-theme"></div>
-          <div class="critical-line low"></div>
-          <div class="critical-line high"></div>
+        <!-- This absolutely-centered element houses the battery rectangle -->
+        <div class="battery-center">
+          <div class="battery-container">
+            <div id="batterySoc" class="battery-soc xbox-theme"></div>
+            <div class="critical-line low"></div>
+            <div class="critical-line high"></div>
+          </div>
         </div>
+      
+        <!-- This text block is placed to the right of the battery -->
         <div class="battery-info">
-          <!-- Updated to MW if you want -->
           <div id="batteryLabel">50.0% State of Charge</div>
           <div id="cycleCount">Battery Cycles: 0</div>
           <div id="batteryWarning" class="battery-warning"></div>

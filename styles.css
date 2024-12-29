@@ -29,7 +29,7 @@
   /* Settings Button */
   .settings-button {
     position: fixed;
-    top: 5px;
+    bottom: 5px;
     left: 20px;
     background-color: #107C10; /* Xbox Green */
     border: none;
@@ -306,17 +306,16 @@
     margin-top: 4px;
   }
   
-  /* Battery */
-  /* Centering the battery display */
-.battery-display {
-    display: flex;
-    justify-content: center; /* Center horizontally */
-    align-items: center;
-    margin: 20px auto;       /* Center vertically within container */
-    gap: 20px;               /* Spacing between battery and info */
+  /* Battery Display */
+  .battery-display {
+    position: relative;    /* So we can absolutely-position children */
     width: 100%;
-    max-width: 600px;
+    max-width: 800px;      /* Enough width for the battery + text to the right */
+    height: 240px;         /* Enough height for the battery plus top/bottom space */
+    margin: 0 auto;        /* Center this entire block in its parent */
+    /* You can add padding or a border if needed */
   }
+  
   
   /* Battery Container */
   .battery-container {
@@ -325,9 +324,19 @@
     align-content: center;
     width: 60px;
     height: 200px;
+    margin-top: 30px;
     border: 3px solid #107C10; /* Xbox Green border */
     border-radius: 12px;
     background-color: #2c2c2c; /* Dark background for the container */
+  }
+
+  /* The battery rectangle, placed at horizontal center */
+.battery-center {
+    position: absolute;
+    left: 50%;
+    top: 0; /* or 50% if you want it vertically centered as well */
+    transform: translateX(-50%); /* shift left half its width */
+    /* No set width here; .battery-container sets its own width. */
   }
   
   /* Battery SoC - Normal State */
@@ -364,13 +373,15 @@
   
   /* Battery Info */
   .battery-info {
-    margin-top: 8px;
-    font-weight: bold;
+    position: absolute;
+    margin-top: 50px;
+    top: 0; 
+    left: calc(50% + 80px);
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
     gap: 6px;
     color: #FFFFFF;
+    font-weight: bold;
   }
   
   .battery-info div {
@@ -462,7 +473,7 @@
     top: -250px; /* hidden above the viewport initially */
     left: 0;
     width: 100%;
-    height: 250px; /* adjust as needed */
+    height: 450px; /* adjust as needed */
     background-color: #2C2C2C; /* Dark background */
     color: #FFFFFF;
     overflow-y: auto;
@@ -470,6 +481,7 @@
     z-index: 2000; /* Should be above main content, but below your button if needed */
     border-bottom: 2px solid #107C10; /* Xbox Green border */
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.7);
+    font-family: 'Audiowide', sans-serif;
   }
   
   .intro-panel.active {
@@ -479,6 +491,12 @@
   .intro-content {
     padding: 20px;
   }
+
+  .intro-toggle-button.close-mode {
+    background-color: #B71C1C; /* Reddish for a "close" vibe */
+  }
+
+  
   
   /* The "About the game" button */
   .intro-toggle-button {
@@ -508,13 +526,14 @@
     padding: 20px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.6);
     font-size: .9rem;
+    font-family: 'Audiowide', sans-serif;
     line-height: 1.6;
     color: #FFFFFF;
   }
   
   .info-pane h2 {
     margin-bottom: 12px;
-    color: #107C10; /* Xbox Green */
+    color: #12ac12; /* Xbox Green */
   }
   
   /* Accordion Styles */
