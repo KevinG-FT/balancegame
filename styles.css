@@ -233,12 +233,15 @@
   .environment-stats .generic-label {
     font-weight: bold;
     color: #FFFFFF;
+    font-size: 0.8rem;
     margin-bottom: 5px;
+    text-align: top;
   }
   
   .environment-stats .data-item {
     font-weight: 600;
-    font-size: 1.1rem;
+    font-size: 1rem;
+    text-align: bottom;
     color: #12ac12; /* Xbox Green for data */
   }
   

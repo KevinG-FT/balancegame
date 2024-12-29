@@ -440,7 +440,7 @@ function updatePrices(tMinutes) {
     spotPrice -= settings.spotPriceImbalanceLowerScale * (netImbalanceMW / 50);
   }
   spotPrice = Math.max(settings.spotPriceClamp.min, Math.min(settings.spotPriceClamp.max, spotPrice));
-  const wholesalePrice = spotPrice * 0.5;
+  const wholesalePrice = spotPrice * 0.5; // should be average of spot price over time
 
   if (elements.spotPrice) {
     elements.spotPrice.textContent = `€${spotPrice.toFixed(3)}/kWh`;
@@ -736,7 +736,7 @@ function updateUI() {
   }
 
   logToConsole(
-    `UI => SoC=${soc}%, Rev=€${revenue}, Cycles=${cycleCount}`
+    `UI => SoC=${soc.toFixed(2)}%, Rev=€${revenue.toFixed(2)}, Cycles=${cycleCount.toFixed(1)}`
   );
 }
 
