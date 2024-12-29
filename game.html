@@ -11,7 +11,7 @@
 <body>
   <div class="main-wrapper">
     <!-- Settings Button -->
-    <button id="settingsButton" class="settings-button">⚙️ Settings</button>
+    <button id="settingsButton" class="settings-button">⚙️Settings</button>
 
     <!-- Settings Panel -->
     <div id="settingsPanel" class="settings-panel">
@@ -22,11 +22,47 @@
         <h3>Game Time Settings</h3>
         <label>
           Game Duration (seconds):
-          <input type="number" id="gameDurationSeconds" min="60" max="3600" step="60">
+          <input type="number" id="gameDurationSeconds" min="60" max="3600" step="60" value="180">
         </label>
         <label>
           Compressed Minutes per Second:
-          <input type="number" id="compressedMinutesPerSecond" min="1" max="60" step="1" readonly>
+          <input type="number" id="compressedMinutesPerSecond" min="1" max="60" step="1" readonly value="8">
+        </label>
+      </section>
+
+      <!-- Battery Parameters -->
+      <section>
+        <h3>Battery Parameters</h3>
+        <label for="batterySize">Battery Size (MW):</label>
+        <input type="number" id="batterySizeInput" min="0.1" step="10.0" value="10">
+
+        <label>
+          Battery Initial SoC (%):
+          <input type="number" id="batteryInitialSoC" min="0" max="100" step="1" value="50">
+        </label>
+        <label>
+          Battery Max SoC (%):
+          <input type="number" id="batteryMaxSoC" min="0" max="100" step="1" value="100">
+        </label>
+        <label>
+          Battery Min SoC (%):
+          <input type="number" id="batteryMinSoC" min="0" max="100" step="1" value="0">
+        </label>
+        <label>
+          Battery Cost per MWh (EUR):
+          <input type="number" id="batteryCostPerMWh" min="0" max="100" step="0.01" value="1">
+        </label>
+        <label>
+          Battery Income per MWh (EUR):
+          <input type="number" id="batteryIncomePerMWh" min="0" max="100" step="0.01" value="0.5">
+        </label>
+        <label>
+          Battery SoC Change per Discharge MWh (%):
+          <input type="number" id="batterySoCChangePerDischargeMWh" min="-100" max="100" step="0.1" value="5">
+        </label>
+        <label>
+          Battery SoC Change per Charge MWh (%):
+          <input type="number" id="batterySoCChangePerChargeMWh" min="-100" max="100" step="0.1" value="5">
         </label>
       </section>
       
@@ -35,39 +71,41 @@
         <h3>Environment Parameters</h3>
         <label>
           Temperature Amplitude (°C):
-          <input type="number" id="temperatureAmplitude" min="0" max="50" step="1">
+          <input type="number" id="temperatureAmplitude" min="0" max="50" step="1" value="10">
         </label>
         <label>
           Temperature Midpoint (°C):
-          <input type="number" id="temperatureMidpoint" min="-50" max="50" step="1">
+          <input type="number" id="temperatureMidpoint" min="-50" max="50" step="1" value="5">
         </label>
         <label>
           Wind Baseline Amplitude (m/s):
-          <input type="number" id="windBaselineAmplitude" min="0" max="20" step="1">
+          <input type="number" id="windBaselineAmplitude" min="0" max="20" step="1" value="3">
         </label>
         <label>
           Wind Baseline Midpoint (m/s):
-          <input type="number" id="windBaselineMidpoint" min="0" max="30" step="1">
+          <input type="number" id="windBaselineMidpoint" min="0" max="30" step="1" value="5">
         </label>
         <label>
           Wind Speed Max (m/s):
-          <input type="number" id="windSpeedMax" min="0" max="50" step="1">
+          <input type="number" id="windSpeedMax" min="0" max="50" step="1" value="10">
         </label>
         <label>
           Wind Speed Min (m/s):
-          <input type="number" id="windSpeedMin" min="0" max="50" step="1">
+          <input type="number" id="windSpeedMin" min="0" max="50" step="1" value="0">
+        </label>
+
+        <!-- Key: now in MW, not GW -->
+        <label>
+          PV Generation Max (MW):
+          <input type="number" id="pvGenerationMaxMW" min="0" max="1000" step="10" value="30">
         </label>
         <label>
-          PV Generation Max (GW):
-          <input type="number" id="pvGenerationMaxGW" min="0" max="100" step="0.1">
+          Wind Generation Max (MW):
+          <input type="number" id="windGenerationMaxMW" min="0" max="1000" step="10" value="40">
         </label>
         <label>
-          Wind Generation Max (GW):
-          <input type="number" id="windGenerationMaxGW" min="0" max="100" step="0.1">
-        </label>
-        <label>
-          Baseline Generation (GW):
-          <input type="number" id="baselineGenerationGW" min="0" max="1000" step="1">
+          Gas Generation (MW):
+          <input type="number" id="gasGenerationMW" min="0" max="10000" step="10" value="50">
         </label>
       </section>
       
@@ -75,20 +113,20 @@
       <section>
         <h3>Demand Parameters</h3>
         <label>
-          Demand Base (GW):
-          <input type="number" id="demandBaseGW" min="0" max="1000" step="1">
+          Demand Base (MW):
+          <input type="number" id="demandBaseMW" min="0" max="10000" step="10" value="69">
         </label>
         <label>
           Morning Peak Multiplier:
-          <input type="number" id="demandPeakMultiplierMorning" min="0" max="5" step="0.1">
+          <input type="number" id="demandPeakMultiplierMorning" min="0" max="5" step="0.1" value="1.2">
         </label>
         <label>
           Evening Peak Multiplier:
-          <input type="number" id="demandPeakMultiplierEvening" min="0" max="5" step="0.1">
+          <input type="number" id="demandPeakMultiplierEvening" min="0" max="5" step="0.1" value="1.3">
         </label>
         <label>
           Demand Temperature Factor:
-          <input type="number" id="demandTemperatureFactor" min="0" max="10" step="0.1">
+          <input type="number" id="demandTemperatureFactor" min="0" max="10" step="0.001" value="0.005">
         </label>
       </section>
       
@@ -97,23 +135,23 @@
         <h3>Frequency Parameters</h3>
         <label>
           Frequency Base (Hz):
-          <input type="number" id="frequencyBase" min="40" max="60" step="0.1">
+          <input type="number" id="frequencyBase" min="40" max="60" step="0.1" value="50.0">
         </label>
         <label>
           Frequency Change Scaling:
-          <input type="number" id="frequencyChangeScaling" min="0" max="1" step="0.001">
+          <input type="number" id="frequencyChangeScaling" min="0" max="1" step="0.001" value="0.02">
         </label>
         <label>
           Frequency Clamp Min (Hz):
-          <input type="number" id="frequencyClampMin" min="40" max="50" step="0.1">
+          <input type="number" id="frequencyClampMin" min="40" max="50" step="0.1" value="49.0">
         </label>
         <label>
           Frequency Clamp Max (Hz):
-          <input type="number" id="frequencyClampMax" min="50" max="60" step="0.1">
+          <input type="number" id="frequencyClampMax" min="50" max="60" step="0.1" value="51.0">
         </label>
         <label>
           Frequency Noise Range (Hz):
-          <input type="number" id="frequencyNoiseRange" min="0" max="1" step="0.001">
+          <input type="number" id="frequencyNoiseRange" min="0" max="1" step="0.001" value="0.02">
         </label>
       </section>
       
@@ -122,27 +160,27 @@
         <h3>FCR-N Parameters</h3>
         <label>
           FCR-N SoC Min (%):
-          <input type="number" id="fcrNSoCMin" min="0" max="100" step="1">
+          <input type="number" id="fcrNSoCMin" min="0" max="100" step="1" value="40">
         </label>
         <label>
           FCR-N SoC Max (%):
-          <input type="number" id="fcrNSoCMax" min="0" max="100" step="1">
+          <input type="number" id="fcrNSoCMax" min="0" max="100" step="1" value="60">
         </label>
         <label>
           FCR-N Frequency Range Min (Hz):
-          <input type="number" id="fcrNFrequencyRangeMin" min="40" max="60" step="0.1">
+          <input type="number" id="fcrNFrequencyRangeMin" min="40" max="60" step="0.1" value="49.5">
         </label>
         <label>
           FCR-N Frequency Range Max (Hz):
-          <input type="number" id="fcrNFrequencyRangeMax" min="40" max="60" step="0.1">
+          <input type="number" id="fcrNFrequencyRangeMax" min="40" max="60" step="0.1" value="50.5">
         </label>
         <label>
           FCR-N Revenue per MW (EUR):
-          <input type="number" id="fcrNRevenuePerMW" min="0" max="1000" step="0.1">
+          <input type="number" id="fcrNRevenuePerMW" min="0" max="1000" step="0.1" value="10">
         </label>
         <label>
           FCR-N SoC Change per MW:
-          <input type="number" id="fcrNSoCChangePerMW" min="-10" max="10" step="0.1">
+          <input type="number" id="fcrNSoCChangePerMW" min="-10" max="10" step="0.1" value="0.3">
         </label>
       </section>
       
@@ -151,43 +189,43 @@
         <h3>FCR-D Parameters</h3>
         <label>
           FCR-D Activation Threshold Up (Hz):
-          <input type="number" id="fcrDActivationThresholdUp" min="40" max="60" step="0.1">
+          <input type="number" id="fcrDActivationThresholdUp" min="40" max="60" step="0.1" value="49.9">
         </label>
         <label>
           FCR-D Activation Threshold Down (Hz):
-          <input type="number" id="fcrDActivationThresholdDown" min="40" max="60" step="0.1">
+          <input type="number" id="fcrDActivationThresholdDown" min="40" max="60" step="0.1" value="50.1">
         </label>
         <label>
           FCR-D Ramp Time Partial (seconds):
-          <input type="number" id="fcrDRampTimePartial" min="1" max="300" step="1">
+          <input type="number" id="fcrDRampTimePartial" min="1" max="300" step="1" value="5">
         </label>
         <label>
           FCR-D Ramp Time Full (seconds):
-          <input type="number" id="fcrDRampTimeFull" min="1" max="300" step="1">
+          <input type="number" id="fcrDRampTimeFull" min="1" max="300" step="1" value="30">
         </label>
         <label>
           FCR-D Frequency Impact Partial (Hz/s):
-          <input type="number" id="fcrDFrequencyImpactPartial" min="-1" max="1" step="0.001">
+          <input type="number" id="fcrDFrequencyImpactPartial" min="-1" max="1" step="0.001" value="0.03">
         </label>
         <label>
           FCR-D Frequency Impact Full (Hz/s):
-          <input type="number" id="fcrDFrequencyImpactFull" min="-1" max="1" step="0.001">
+          <input type="number" id="fcrDFrequencyImpactFull" min="-1" max="1" step="0.001" value="0.06">
         </label>
         <label>
           FCR-D SoC Impact Partial (%/s):
-          <input type="number" id="fcrDSoCImpactPartial" min="-10" max="10" step="0.1">
+          <input type="number" id="fcrDSoCImpactPartial" min="-10" max="10" step="0.1" value="-1">
         </label>
         <label>
           FCR-D SoC Impact Full (%/s):
-          <input type="number" id="fcrDSoCImpactFull" min="-10" max="10" step="0.1">
+          <input type="number" id="fcrDSoCImpactFull" min="-10" max="10" step="0.1" value="-2">
         </label>
         <label>
           FCR-D Revenue per Sec Partial (EUR/s):
-          <input type="number" id="fcrDRevenuePerSecPartial" min="0" max="1000" step="0.1">
+          <input type="number" id="fcrDRevenuePerSecPartial" min="0" max="1000" step="0.1" value="5">
         </label>
         <label>
           FCR-D Revenue per Sec Full (EUR/s):
-          <input type="number" id="fcrDRevenuePerSecFull" min="0" max="1000" step="0.1">
+          <input type="number" id="fcrDRevenuePerSecFull" min="0" max="1000" step="0.1" value="10">
         </label>
       </section>
       
@@ -196,27 +234,27 @@
         <h3>FFR Parameters</h3>
         <label>
           FFR Activation Threshold (Hz):
-          <input type="number" id="ffrActivationThreshold" min="40" max="60" step="0.1">
+          <input type="number" id="ffrActivationThreshold" min="40" max="60" step="0.1" value="49.7">
         </label>
         <label>
           FFR Activation Duration (seconds):
-          <input type="number" id="ffrActivationDuration" min="0" max="300" step="1">
+          <input type="number" id="ffrActivationDuration" min="0" max="300" step="1" value="1">
         </label>
         <label>
           FFR Support Duration (seconds):
-          <input type="number" id="ffrSupportDuration" min="0" max="300" step="1">
+          <input type="number" id="ffrSupportDuration" min="0" max="300" step="1" value="1">
         </label>
         <label>
           FFR Deactivation Time (seconds):
-          <input type="number" id="ffrDeactivationTime" min="0" max="300" step="1">
+          <input type="number" id="ffrDeactivationTime" min="0" max="300" step="1" value="1">
         </label>
         <label>
           FFR Buffer Time (seconds):
-          <input type="number" id="ffrBufferTime" min="0" max="3600" step="1">
+          <input type="number" id="ffrBufferTime" min="0" max="3600" step="1" value="10">
         </label>
         <label>
           FFR Recovery Time (seconds):
-          <input type="number" id="ffrRecoveryTime" min="0" max="86400" step="1">
+          <input type="number" id="ffrRecoveryTime" min="0" max="86400" step="1" value="900">
         </label>
       </section>
       
@@ -225,68 +263,36 @@
         <h3>Market Prices</h3>
         <label>
           Spot Price Night1 (EUR/kWh):
-          <input type="number" id="spotPriceNight1" min="0" max="10" step="0.0001">
+          <input type="number" id="spotPriceNight1" min="0" max="10" step="0.0001" value="0.0555">
         </label>
         <label>
           Spot Price Morning Peak (EUR/kWh):
-          <input type="number" id="spotPriceMorningPeak" min="0" max="10" step="0.0001">
+          <input type="number" id="spotPriceMorningPeak" min="0" max="10" step="0.0001" value="0.011">
         </label>
         <label>
           Spot Price Day (EUR/kWh):
-          <input type="number" id="spotPriceDay" min="0" max="10" step="0.0001">
+          <input type="number" id="spotPriceDay" min="0" max="10" step="0.0001" value="0.2">
         </label>
         <label>
           Spot Price Night2 (EUR/kWh):
-          <input type="number" id="spotPriceNight2" min="0" max="10" step="0.0001">
+          <input type="number" id="spotPriceNight2" min="0" max="10" step="0.0001" value="0.0084">
         </label>
         <label>
           Spot Price Clamp Min (EUR/kWh):
-          <input type="number" id="spotPriceClampMin" min="0" max="10" step="0.001">
+          <input type="number" id="spotPriceClampMin" min="0" max="10" step="0.001" value="0.005">
         </label>
         <label>
           Spot Price Clamp Max (EUR/kWh):
-          <input type="number" id="spotPriceClampMax" min="0" max="10" step="0.001">
+          <input type="number" id="spotPriceClampMax" min="0" max="10" step="0.001" value="0.5">
+        </label>
+        <!-- If you want to interpret these as "EUR/kWh per MW shortage" instead of "per GW", rename here: -->
+        <label>
+          Spot Price Imbalance Upper Scale (EUR/kWh per MW shortage):
+          <input type="number" id="spotPriceImbalanceUpperScale" min="0" max="10" step="0.001" value="0.05">
         </label>
         <label>
-          Spot Price Imbalance Upper Scale (EUR/kWh per GW shortage):
-          <input type="number" id="spotPriceImbalanceUpperScale" min="0" max="10" step="0.001">
-        </label>
-        <label>
-          Spot Price Imbalance Lower Scale (EUR/kWh per GW surplus):
-          <input type="number" id="spotPriceImbalanceLowerScale" min="0" max="10" step="0.001">
-        </label>
-      </section>
-      
-      <!-- Battery Parameters -->
-      <section>
-        <h3>Battery Parameters</h3>
-        <label>
-          Battery Initial SoC (%):
-          <input type="number" id="batteryInitialSoC" min="0" max="100" step="1">
-        </label>
-        <label>
-          Battery Max SoC (%):
-          <input type="number" id="batteryMaxSoC" min="0" max="100" step="1">
-        </label>
-        <label>
-          Battery Min SoC (%):
-          <input type="number" id="batteryMinSoC" min="0" max="100" step="1">
-        </label>
-        <label>
-          Battery Cost per MWh (EUR):
-          <input type="number" id="batteryCostPerMWh" min="0" max="100" step="0.01">
-        </label>
-        <label>
-          Battery Income per MWh (EUR):
-          <input type="number" id="batteryIncomePerMWh" min="0" max="100" step="0.01">
-        </label>
-        <label>
-          Battery SoC Change per Discharge MWh (%):
-          <input type="number" id="batterySoCChangePerDischargeMWh" min="-100" max="100" step="0.1">
-        </label>
-        <label>
-          Battery SoC Change per Charge MWh (%):
-          <input type="number" id="batterySoCChangePerChargeMWh" min="-100" max="100" step="0.1">
+          Spot Price Imbalance Lower Scale (EUR/kWh per MW surplus):
+          <input type="number" id="spotPriceImbalanceLowerScale" min="0" max="10" step="0.001" value="0.02">
         </label>
       </section>
       
@@ -324,7 +330,7 @@
           <div id="wholesalePrice" class="data-item">€0.02775</div>
         </div>
         <div class="generic-label">TIME OF DAY 
-          <div id="timeOfDay" class="data-item">06:00</div>
+          <div id="timeOfDay" class="data-item">00:00</div>
         </div>
         <div class="generic-label">TEMPERATURE
           <div id="temperature" class="data-item">20°C</div>
@@ -333,22 +339,24 @@
           <div id="wind" class="data-item">5 m/s</div>
         </div>
         <div class="generic-label">SUN
-          <div id="sun" class="data-item">Partly Cloudy</div>
+          <div id="sun" class="data-item">Dark</div>
         </div>
         <div class="generic-label">WIND GENERATION
-          <div id="windGeneration" class="data-item">0 GW</div>
+          <!-- Now displayed in MW -->
+          <div id="windGeneration" class="data-item">5 MW</div>
         </div>
         <div class="generic-label">PV GENERATION
-          <div id="pvGeneration" class="data-item">0 GW</div>
+          <div id="pvGeneration" class="data-item">0 MW</div>
         </div>
+        <div class="generic-label">FOSSIL GENERATION
+            <!-- e.g., Gas -->
+            <div id="baselineGeneration" class="data-item">0 MW</div>
+          </div>
         <div class="generic-label">TOTAL GENERATION
-          <div id="generation" class="data-item">40 GW</div>
-        </div>
-        <div class="generic-label">OTHER SOURCES
-          <div id="baselineGeneration" class="data-item">0 GW</div>
+          <div id="generation" class="data-item">5 MW</div>
         </div>
         <div class="generic-label">DEMAND
-          <div id="demand" class="data-item">0 GW</div>
+          <div id="demand" class="data-item">0 MW</div>
         </div>
       </div>
 
@@ -364,11 +372,12 @@
       <!-- Battery Display -->
       <div class="battery-display">
         <div class="battery-container">
-           <div id="batterySoc" class="battery-soc xbox-theme"></div>
+          <div id="batterySoc" class="battery-soc xbox-theme"></div>
           <div class="critical-line low"></div>
           <div class="critical-line high"></div>
         </div>
         <div class="battery-info">
+          <!-- Updated to MW if you want -->
           <div id="batteryLabel">50.0% State of Charge</div>
           <div id="cycleCount">Battery Cycles: 0</div>
           <div id="batteryWarning" class="battery-warning"></div>
@@ -461,16 +470,6 @@
 
   <!-- External or inline JS -->
   <script src="game_logic.js"></script>
-  <script>
-    // Settings Panel Toggle
-    const settingsButton = document.getElementById('settingsButton');
-    const settingsPanel = document.getElementById('settingsPanel');
 
-    settingsButton.addEventListener('click', () => {
-      settingsPanel.classList.toggle('active');
-    });
-
-    
-  </script>
 </body>
 </html>

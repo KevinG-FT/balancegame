@@ -50,6 +50,7 @@
   
   /* Settings Panel */
   .settings-panel {
+    display: none;
     position: fixed;
     top: 0;
     left: -420px; /* Hidden by default */
@@ -61,10 +62,12 @@
     overflow-y: auto;
     transition: left 0.3s ease-in-out;
     z-index: 999;
+    transition: all 0.3s ease;
   }
   
   /* When Panel is Active */
   .settings-panel.active {
+    display: block;
     left: 0;
   }
   
@@ -301,9 +304,8 @@
   }
   
   /* Battery */
-  
   /* Centering the battery display */
-  .battery-display {
+.battery-display {
     display: flex;
     justify-content: center; /* Center horizontally */
     align-items: center;
@@ -322,28 +324,30 @@
     height: 200px;
     border: 3px solid #107C10; /* Xbox Green border */
     border-radius: 12px;
-    background-color: #2C2C2C;
+    background-color: #2c2c2c; /* Dark background for the container */
   }
   
-  /* Battery SoC */
+  /* Battery SoC - Normal State */
   .battery-soc.xbox-theme {
     position: absolute;
     bottom: 0;
     width: 100%;
-    background: #00FF00; /* Bright green for SoC */
+    background: #00FF00; /* Bright green for normal SoC */
     transition: height 0.3s ease, background-color 0.3s ease;
     height: 50%; /* Default height representing 50% SoC */
   }
   
-  /* Change battery color based on SoC */
+  /* Battery SoC - Low SoC */
   .battery-soc.low {
     background: #B71C1C; /* Red for low SoC */
   }
   
+  /* Battery SoC - High SoC */
   .battery-soc.high {
     background: #FFC107; /* Amber for high SoC */
   }
   
+  /* Critical Lines */
   .critical-line {
     position: absolute;
     left: 0;
