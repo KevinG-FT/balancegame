@@ -10,8 +10,23 @@
 </head>
 <body>
   <div class="main-wrapper">
+    <!-- Intro Panel (Open by default) -->
+    <div id="introPanel" class="intro-panel">
+        <div class="intro-content">
+        <h2>Welcome to the Balancing Market Game!</h2>
+        <p>
+            This is a brief introduction to the game. 
+            Learn about the objectives, how to keep the frequency in balance,
+            and how to manage your resources for optimal performance.
+        </p>
+    </div>
+  </div>
+  <!-- A small button to toggle the Intro Panel -->
+    <button id="introToggleButton" class="intro-toggle-button">
+        About the game
+    </button>
     <!-- Settings Button -->
-    <button id="settingsButton" class="settings-button">⚙️Settings</button>
+    <button id="settingsButton" class="settings-button">⚙️</button>
 
     <!-- Settings Panel -->
     <div id="settingsPanel" class="settings-panel">
@@ -424,49 +439,117 @@
     </div>
 
     <!-- Info Pane (Right) -->
-    <div class="info-pane">
-      <h2>How To Play</h2>
-      <p>
-        The objective is to keep the grid stable (near 50 Hz) by
-        participating in the balancing markets and earning revenue.
-      </p>
-      <p>
-        Use your battery's capacity to raise or lower the frequency.
-        Watch out for low/high SoC or excessive cycling!
-      </p>
-      <p>
-        You fail if the frequency goes beyond 49.5/50.5, or SoC <10% or >90%.
-        Survive 3 minutes and accumulate enough revenue to win!
-      </p>
-    
-      <!-- Collapsible Terms -->
-      <div class="accordion-item">
-        <button class="accordion-button" data-target="#fcrdContent">
-          FCR-D
-        </button>
-        <div id="fcrdContent" class="accordion-content">
-          <p>
-            FCR-D (Frequency Containment Reserve for Disturbances) is
-            a reserve product used to stabilize the grid when major frequency
-            deviations occur, typically outside 49.9-50.1 Hz. 
-          </p>
-        </div>
+    <!-- Info Pane (Right) -->
+<div class="info-pane">
+    <h2>Nordic Balancing Markets</h2>
+    <p>
+      Learn about the various reserves and mechanisms used to stabilize the grid and maintain balance in the Nordic power system.
+    </p>
+  
+    <!-- FCR-D Section -->
+    <div class="accordion-item">
+      <button class="accordion-button" data-target="#fcrdContent">
+        FCR-D
+      </button>
+      <div id="fcrdContent" class="accordion-content">
+        <p>
+          FCR-D (Frequency Containment Reserve for Disturbances) is a reserve product used to stabilize the grid when major frequency deviations occur, typically outside 49.9-50.1 Hz.
+        </p>
+        <p>
+          With the Flextools solution, activation of FCR-D is based on automatic local control. The Reserve Unit must have a controller that adjusts the power based on frequency measurement when the unit participates in the maintenance of the reserve. Flextools has a local device (Enformer) and a frequency monitor that can act quickly (under 1 second) and adjust the power of the energy asset based on the frequency.
+        </p>
+        <ul>
+          <li><strong>Minimum Size (Adjustment):</strong> 1 MW</li>
+          <li><strong>Full Activation Time:</strong> 30 seconds (after stepwise frequency change from 49.9 Hz to 49.5 Hz for FCR-D Up, or from 50.1 Hz to 50.5 Hz for FCR-D Down).</li>
+        </ul>
+        <h4>FCR-D’s Role</h4>
+        <ul>
+          <li><strong>Grid Resilience:</strong> Provides the first line of defense during major frequency disturbances, preventing grid collapse.</li>
+          <li><strong>Renewable Integration:</strong> Compensates for the variability and intermittency of renewable generation.</li>
+          <li><strong>System Security:</strong> Acts quickly to stabilize the grid, ensuring downstream reserves have time to react.</li>
+        </ul>
+        <h4>Challenges</h4>
+        <ul>
+          <li><strong>Cost and Availability:</strong> Maintaining sufficient FCR-D capacity can be expensive, especially during high-risk periods.</li>
+          <li><strong>Asset Suitability:</strong> Not all resources are capable of providing fast and precise responses, limiting the pool of eligible participants.</li>
+          <li><strong>Inertia Reduction:</strong> Lower system inertia from renewable energy increases the need for FCR-D, creating additional procurement pressure.</li>
+        </ul>
+        <p><strong>Note:</strong> In this game, activate FCR-D Up/Down for periods when frequency is less stable. Activating FCR-D suspends your battery’s FCR-N participation.</p>
       </div>
-    
-      <div class="accordion-item">
-        <button class="accordion-button" data-target="#fcrnContent">
-          FCR-N
-        </button>
-        <div id="fcrnContent" class="accordion-content">
-          <p>
-            FCR-N (Frequency Containment Reserve - Normal) maintains the
-            frequency continuously within a smaller band (49.9–50.1 Hz).
-            Assets automatically respond to minor deviations around 50 Hz.
-          </p>
-        </div>
+    </div>
+  
+    <!-- FCR-N Section -->
+    <div class="accordion-item">
+      <button class="accordion-button" data-target="#fcrnContent">
+        FCR-N 
+      </button>
+      <div id="fcrnContent" class="accordion-content">
+        <p>
+          Frequency Containment Reserve for Normal Operation (FCR-N) is a balancing service designed to maintain the frequency within the normal operational range (typically 50 Hz ±0.1 Hz) in the Nordic synchronous area. It is part of the frequency containment reserve system, alongside FCR-D (for disturbances), and operates continuously to counteract small imbalances between supply and demand.
+        </p>
+        <h4>FCR-N’s Role</h4>
+        <ul>
+          <li><strong>Frequency Stability:</strong> Maintains the frequency within operational limits, preventing cascading failures.</li>
+          <li><strong>Decentralized Automation:</strong> Local response ensures rapid and efficient corrections without centralized control delays.</li>
+          <li><strong>Grid Integration:</strong> Facilitates the operation of an interconnected Nordic grid by sharing balancing responsibilities among TSOs.</li>
+        </ul>
+        <h4>Challenges</h4>
+        <ul>
+          <li><strong>Resource Availability:</strong> Seasonal variations (e.g., less hydropower in dry seasons) can limit available FCR-N capacity.</li>
+          <li><strong>Economic Pressures:</strong> The rise of renewables increases the demand for reserves, creating market pricing pressures.</li>
+          <li><strong>Harmonization:</strong> Differences in procurement and operational practices among TSOs require careful coordination.</li>
+        </ul>
+        <p><strong>Note:</strong> In this game, FCR-N works only when FCR-D Up or FCR-D Down are not activated and the battery’s state of charge is within 40–60%.</p>
+      </div>
+    </div>
+  
+    <!-- FFR Section -->
+    <div class="accordion-item">
+      <button class="accordion-button" data-target="#ffrContent">
+        FFR
+      </button>
+      <div id="ffrContent" class="accordion-content">
+        <p>
+          FFR (Fast Frequency Reserve) is a reserve that is activated very quickly to prevent frequency drops below 49.0 Hz in the event of major faults in the power system.
+        </p>
+        <ul>
+          <li><strong>Activation:</strong> Within approximately one second when the system frequency drops below a predefined threshold (49.5–49.7 Hz).</li>
+          <li><strong>Service Duration:</strong> Typically sustained for 30 seconds to allow other reserves (e.g., FCR-D or aFRR) to take over.</li>
+        </ul>
+        <h4>FFR’s Role</h4>
+        <ul>
+          <li><strong>Grid Stability:</strong> Prevents blackouts by responding quickly to sudden frequency drops.</li>
+          <li><strong>Integration of Renewables:</strong> Addresses challenges from variable, low-inertia generation like wind and solar.</li>
+          <li><strong>Economic Efficiency:</strong> Enables cost-effective grid management compared to traditional methods (e.g., maintaining high inertia through spinning reserves).</li>
+        </ul>
+        <h4>Challenges</h4>
+        <ul>
+          <li><strong>Limited Availability:</strong> FFR is only required during low-inertia periods, so market participation is intermittent.</li>
+          <li><strong>Cost and Complexity:</strong> High-speed response requirements limit eligible participants, often favoring advanced technologies like batteries.</li>
+        </ul>
+        <p><strong>Note:</strong> In this game, you can activate your battery’s participation in FFR and leave it on to further provide frequency stability.</p>
+      </div>
+    </div>
+  
+    <!-- mFRR Section -->
+    <div class="accordion-item">
+      <button class="accordion-button" data-target="#mfrrContent">
+        mFRR
+      </button>
+      <div id="mfrrContent" class="accordion-content">
+        <p>
+          Manual Frequency Restoration Reserve (mFRR) is a balancing service used in the Nordic synchronous area to address significant supply-demand imbalances over a longer timeframe. Unlike automatic reserves, mFRR is activated manually by Transmission System Operators (TSOs) to restore frequency to 50 Hz and maintain grid stability after larger disturbances or to correct imbalances identified during market operations.
+        </p>
+        <h4>mFRR’s Role</h4>
+        <ul>
+          <li><strong>Gas Turbines:</strong> Provide robust capacity for sustained events and complement renewable variability during periods of high demand.</li>
+          <li><strong>Batteries:</strong> Enable fast, flexible balancing, especially valuable in a renewable-heavy grid with rapid fluctuations.</li>
+        </ul>
+        <p><strong>Note:</strong> In this game, the “TSO” will activate mFRR for the gas turbines to maintain grid stability. The effects of gas reserve activation are gradual, however, and you must take the necessary actions with your battery to ensure grid stability as well.</p>
       </div>
     </div>
   </div>
+  
 
   <!-- External or inline JS -->
   <script src="game_logic.js"></script>

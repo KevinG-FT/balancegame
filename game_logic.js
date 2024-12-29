@@ -30,6 +30,8 @@ let windGenerationMW = 0;          // Current wind generation (MW)
 let pvGenerationMW = 0;            // Current solar generation (MW)
 let currentGasMW = 0;              // We'll assign after loading settings
 let targetGasMW = 0;               // Where we want gas to be in the near future
+let currentPVmw = 0;     // actual current PV output
+let targetPVmw = 0;      // desired or theoretical PV output
 
 // Frequency & Battery
 let frequency = 50.0;    // Current grid frequency (Hz)
@@ -237,6 +239,7 @@ function initializeGame() {
 
 window.onload = () => {
   initializeGame();
+  openIntroPanel();
 };
 
 /*****************************************************
@@ -320,17 +323,18 @@ function clamp(value, minVal, maxVal) {
 }
 
 /** updateGasDispatch */
-function updateGasDispatch(netImbalanceMW) {
-  // netImbalanceMW < 0 => shortage => raise gas
-  // netImbalanceMW > 0 => surplus => lower gas
-  let needed = -netImbalanceMW; 
-  const step = Math.sign(needed) * Math.min(Math.abs(needed), 5);
-  targetGasMW = clamp(targetGasMW + step, 0, settings.gasGenerationMaxMW);
-  logToConsole(`Gas mFRR dispatch => Target=${targetGasMW.toFixed(1)} MW`);
-}
 
+function updateGasDispatch(netImbalanceMW) {
+    // If netImbalance < 0 => shortage => raise gas
+    // If netImbalance > 0 => surplus => reduce gas
+    let needed = -netImbalanceMW;
+    const step = Math.sign(needed) * Math.min(Math.abs(needed), 5);
+    targetGasMW = clamp(targetGasMW + step, 0, settings.gasGenerationMaxMW);
+    logToConsole(`Gas mFRR dispatch => Target=${targetGasMW.toFixed(1)} MW`);
+  }
+  
 /** gas ramp */
-const gasRampRate = 1; // MW/s
+const gasRampRate = 5; // MW/s
 function applyGasRamp(dt) {
   const maxChange = gasRampRate * dt;
   if (currentGasMW < targetGasMW) {
@@ -363,27 +367,52 @@ function calculateDemand(tMinutes) {
   return demandMW;
 }
 
+// Then in the main loop or environment function, we do a PV ramp:
+function applyPVRamp(dt) {
+    const pvRampRate = 2; // MW per second, for example
+    const maxChange = pvRampRate * dt;
+  
+    if (currentPVmw < targetPVmw) {
+      currentPVmw = Math.min(currentPVmw + maxChange, targetPVmw);
+    } else if (currentPVmw > targetPVmw) {
+      currentPVmw = Math.max(currentPVmw - maxChange, targetPVmw);
+    }
+  }
+
 /** updateEnvironment */
-function updateEnvironment(tMinutes) {
-  currentTemperature = getTemperature(tMinutes);
-  maybeUpdateSunCondition(tMinutes);
-  updateWind(tMinutes);
+function updateEnvironment(tMinutes, dt=1) {
+    // 1) Update environment elements
+    currentTemperature = getTemperature(tMinutes);
+    maybeUpdateSunCondition(tMinutes);
+    updateWind(tMinutes);
+  
+    currentDemandMW = calculateDemand(tMinutes);
+  
+    // 2) Wind
+    windGenerationMW = Math.min(currentWind, settings.windGenerationMaxMW);
+  
+    // 3) PV ramp
+    //   a) get sunFactor from currentSunCondition
+    let sunFactor = 0;
+    if (currentSunCondition === "Sunny") sunFactor = 1;
+    else if (currentSunCondition === "Partly Cloudy") sunFactor = 0.6;
+    else if (currentSunCondition === "Cloudy") sunFactor = 0.3;
+    // "Dark" => 0
+  
+    //   b) set target
+    targetPVmw = sunFactor * settings.pvGenerationMaxMW;
+  
+    //   c) ramp
+    applyPVRamp(1);
+  
+    //   d) final assignment
+    pvGenerationMW = currentPVmw;
+  
+    // 4) Sum total generation
+    currentGenerationMW = windGenerationMW + pvGenerationMW + currentGasMW;
+  
+    // 5) Update UI ...
 
-  currentDemandMW = calculateDemand(tMinutes);
-
-  windGenerationMW = Math.min(currentWind, settings.windGenerationMaxMW);
-
-  let sunFactor = 0;
-  if (currentSunCondition === "Sunny") sunFactor = 1;
-  else if (currentSunCondition === "Partly Cloudy") sunFactor = 0.6;
-  else if (currentSunCondition === "Cloudy") sunFactor = 0.3;
-  else if (currentSunCondition === "Dark") sunFactor = 0;
-
-  pvGenerationMW = sunFactor * settings.pvGenerationMaxMW;
-
-  currentGenerationMW = windGenerationMW + pvGenerationMW + currentGasMW;
-
-  // UI
   if (elements.windGeneration) {
     elements.windGeneration.textContent = `${windGenerationMW.toFixed(1)} MW`;
   }
@@ -502,8 +531,13 @@ function updateFCRN() {
   }
 
   const freqDeviation = frequency - settings.frequencyBase;
-  let powerCommandMW = freqDeviation / 0.2; // => ±1 MW
-  powerCommandMW = Math.max(-1, Math.min(1, powerCommandMW));
+
+  // let powerCommandMW = freqDeviation / 0.2; // => ±1 MW
+  // powerCommandMW = Math.max(-1, Math.min(1, powerCommandMW));
+  // ±5 MW at ±0.2 Hz
+    let powerCommandMW = (freqDeviation / 0.2) * 5; 
+    // so if freqDeviation= ±0.2 => ±5 MW
+    powerCommandMW = Math.max(-5, Math.min(5, powerCommandMW));
 
   // SoC
   soc = Math.max(0, Math.min(100, soc + powerCommandMW * settings.fcrNSoCChangePerMW));
@@ -814,7 +848,7 @@ buttons.startGame.onclick = () => {
     if (elements.lossMessage) elements.lossMessage.textContent = "";
 
     startMainLoop();
-    logToConsole("Game started (MW-based).");
+    logToConsole("Game started");
   }
 };
 
@@ -852,7 +886,7 @@ buttons.restartGame.onclick = () => {
   if (elements.lossMessage) elements.lossMessage.textContent = "";
 
   startMainLoop();
-  logToConsole("Game restarted");
+  logToConsole("Game stopped");
 };
 
 /*****************************************************
@@ -940,7 +974,7 @@ toggles.ffrToggle.onchange = () => {
  *****************************************************/
 buttons.charge.onclick = () => {
   if (soc >= settings.batteryMaxSoC) {
-    logToConsole("Battery is already fully charged.");
+    logToConsole("Battery is already fully charged");
     return;
   }
   const power = 20;
@@ -975,3 +1009,82 @@ buttons.discharge.onclick = () => {
   updateUI();
   logToConsole(`Battery discharged: +€${income.toFixed(4)}, SoC=${soc.toFixed(1)}%`);
 };
+
+/*****************************************************
+ * SETTINGS PANEL
+ *****************************************************/
+
+
+/**
+ * Open the settings panel.
+ */
+function openSettingsPanel() {
+  settingsPanel.classList.add('active');
+}
+
+/**
+ * Close the settings panel.
+ */
+function closeSettingsPanel() {
+  settingsPanel.classList.remove('active');
+}
+
+// Toggle on button click
+if (settingsButton) {
+  settingsButton.addEventListener('click', () => {
+    if (settingsPanel.classList.contains('active')) {
+      closeSettingsPanel();
+    } else {
+      openSettingsPanel();
+      // You might call loadSettingsToPanel() here if you want to refresh fields:
+      // loadSettingsToPanel();
+    }
+  });
+}
+
+/*****************************************************
+ * INFO PANE ACCORDION
+ *****************************************************/
+// This snippet toggles the "active" class on the parent .accordion-item
+// so that CSS can show/hide .accordion-content
+const accordionButtons = document.querySelectorAll('.accordion-button');
+
+accordionButtons.forEach((btn) => {
+  btn.addEventListener('click', () => {
+    // The parent .accordion-item
+    const accordionItem = btn.closest('.accordion-item');
+    if (!accordionItem) return;
+
+    // Toggle 'active' class
+    accordionItem.classList.toggle('active');
+  });
+});
+
+/*****************************************************
+ * INTRO PANEL FUNCTIONALITY
+ *****************************************************/
+
+// Grab references to the Intro Panel and Toggle Button by their IDs
+const introPanel = document.getElementById('introPanel');
+const introToggleButton = document.getElementById('introToggleButton');
+
+function openIntroPanel() {
+  introPanel.classList.add('active');
+}
+
+function closeIntroPanel() {
+  introPanel.classList.remove('active');
+}
+
+// If you want the panel open by default on load, call openIntroPanel() here:
+// openIntroPanel();
+
+if (introToggleButton) {
+  introToggleButton.addEventListener('click', () => {
+    if (introPanel.classList.contains('active')) {
+      closeIntroPanel();
+    } else {
+      openIntroPanel();
+    }
+  });
+}
