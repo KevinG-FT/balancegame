@@ -171,7 +171,7 @@ function getDefaultSettings() {
 
     // =============== FREQUENCY PARAMETERS =================
     frequencyBase: 50.0,
-    frequencyChangeScaling: 0.05,
+    frequencyChangeScaling: 0.03, // controls the dyamism of frequency changes. higher is less dynamic.
     frequencyClamp: { min: 49.0, max: 51.0 },
     frequencyNoiseRange: 0.02,
 
