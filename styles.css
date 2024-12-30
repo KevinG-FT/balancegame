@@ -383,10 +383,18 @@
     color: #FFFFFF;
     font-weight: bold;
   }
-  
+
   .battery-info div {
     font-size: 1rem;
   }
+
+  .battery-info .battery-specs div {
+    margin-top: 5px;       /* small spacing above */
+    font-size: small;     /* smaller text */
+    color: #CCCCCC;        /* lighter gray or whichever you prefer */
+  }
+  
+
   
   .battery-warning {
     color: #B71C1C; /* Red for warnings */
@@ -468,24 +476,67 @@
     transform: translateX(26px);
   }
   /* INTRO PANEL (TOP SLIDE) */
+/* Intro Panel: slides down from the top */
 .intro-panel {
     position: fixed;
-    top: -250px; /* hidden above the viewport initially */
+    top: -100%; /* hidden above screen by default */
     left: 0;
     width: 100%;
-    height: 450px; /* adjust as needed */
-    background-color: #2C2C2C; /* Dark background */
-    color: #FFFFFF;
-    overflow-y: auto;
-    transition: top 0.3s ease;
-    z-index: 2000; /* Should be above main content, but below your button if needed */
-    border-bottom: 2px solid #107C10; /* Xbox Green border */
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.7);
-    font-family: 'Audiowide', sans-serif;
+    height: 100%; /* fill entire viewport height */
+    z-index: 2000; /* above main content but below the toggle button if needed */
+    transition: top 0.5s ease; /* slides down in 0.5s */
+    font-family: 'Roboto', sans-serif; /* or whichever font you like */
   }
   
   .intro-panel.active {
     top: 0; /* slides down into view */
+  }
+
+  /* The full background image container */
+.intro-image-bg {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: url("./res/canario-island.png") center center / cover no-repeat;
+  }
+
+  /* The overlay for a subtle gradient or semi-opaque overlay */
+.intro-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    /* Example: black -> transparent gradient top to bottom
+       or a solid black at 60% alpha:
+    */
+    background: linear-gradient(to bottom, rgba(0,0,0,0.5), rgba(0,0,0,0.7));
+    /* Or just background: rgba(0,0,0,0.6); for a uniform overlay */
+  }
+
+  .intro-text-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%); /* center the block in the middle */
+    width: 90%; /* or some fixed max-width like 600px if you want narrower text */
+    max-width: 850px;
+    color: #FFFFFF;
+    text-align: left; /* or center if you prefer the screenshot style */
+    /* padding or margin as desired */
+  }
+
+  /* Headings, paragraphs, etc. */
+.intro-text-content h2 {
+    font-size: 1.9rem;
+    margin-bottom: 1rem;
+    font-weight: bold;
+  }
+  
+  .intro-text-content p {
+    font-size: 1.2rem;
+    line-height: 1.5;
+    margin-bottom: 1rem;
   }
   
   .intro-content {
@@ -526,7 +577,7 @@
     padding: 20px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.6);
     font-size: .9rem;
-    font-family: 'Audiowide', sans-serif;
+    font-family: sans-serif;
     line-height: 1.6;
     color: #FFFFFF;
   }
@@ -534,6 +585,7 @@
   .info-pane h2 {
     margin-bottom: 12px;
     color: #12ac12; /* Xbox Green */
+    font-family: 'Audiowide', sans-serif;
   }
   
   /* Accordion Styles */

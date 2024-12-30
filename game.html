@@ -7,26 +7,37 @@
   <link href="https://fonts.googleapis.com/css2?family=Audiowide&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-  <title>Balancing Market Game</title>
+  <title>Balancing Game</title>
 </head>
 <body>
   <div class="main-wrapper">
     <!-- Intro Panel (Open by default) -->
-    <div id="introPanel" class="intro-panel">
-        <div class="intro-content">
-        <h2>Welcome to the Balancing Market Game!</h2>
-        <p>
-            The mythical island nation of Canario is on a journey to transition away from fossil fuels to reach a 100% renewable energy target. They have introduced significant wind and solar generation capacity but is still reliant on gas to meet its energy needs. 
-             </p>
-            <p>
-            You are the owner and operator of a battery that is connected to the Canario Island grid. Your initial goal is to balance the grid by managing your battery storage system and participating in the Nordic balancing markets. Ultimately, you want to add additional battery capacity such that Canario Island can safely dimension up its wind and solar generation and completely phase out gas.
-            <p>
-            Canario Island  Your decisions will help the island achieve this goal while maintaining grid stability.
-             </p>
-            
-        <img src="./res/canario-island.png" alt="Canario Island" style="width: 350px;" />
-    </div>
-  </div>
+    <div id="introPanel" class="intro-panel active">
+        <div class="intro-image-bg">
+          <!-- This "overlay" block sits over the background image 
+               to provide a gradient or semi-opaque effect -->
+          <div class="intro-overlay">
+            <div class="intro-text-content">
+              <h2>Welcome to the Balancing Game!</h2>
+              <p>
+                You are the owner and operator of a battery that is connected to Miðskar’s isolated grid. 
+                Some wind and solar generation capacity has been introduced 
+                but Miðskar is today still reliant on gas to meet its energy needs. 
+                Your goal is to contribute to grid stability via participation in Nordic balancing 
+                markets, earn revenue, and keep your battery healthy. 
+              </p>
+              <p>
+                Ultimately, you want to add battery capacity so Miðskar can safely scale 
+                up its wind and solar generation and completely phase out gas. But first you must keep the grid stable 
+                and earn revenue.
+              </p>
+              <p>
+                Your decisions will help the island nation achieve its energy goals while maintaining grid stability!
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
   <!-- A small button to toggle the Intro Panel -->
     <button id="introToggleButton" class="intro-toggle-button">
         About the game
@@ -329,7 +340,7 @@
 
       <!-- Header with Title & Controls -->
       <div class="header-bar">
-        <div class="header-title">Balancing Market Game</div>
+        <div class="header-title">Balancing Game</div>
         <div id="lossMessage" class="loss-message"></div>
         <div class="top-bar">
           
@@ -401,10 +412,15 @@
           </div>
         </div>
       
-        <!-- This text block is placed to the right of the battery -->
+
         <div class="battery-info">
           <div id="batteryLabel">50.0% State of Charge</div>
           <div id="cycleCount">Battery Cycles: 0</div>
+          <div class="battery-specs">
+            <div>Power Rating: 20 MW</div>
+            <div>Energy Capacity: 40 MWh</div>
+            <div>C-rate: 0.5</div>
+          </div>
           <div id="batteryWarning" class="battery-warning"></div>
         </div>
       </div>
@@ -455,7 +471,7 @@
     <p>
       Learn about the various reserves and mechanisms used to stabilize the grid and maintain balance in the Nordic power system.
     </p>
-  
+    
     <!-- FCR-D Section -->
     <div class="accordion-item">
       <button class="accordion-button" data-target="#fcrdContent">
@@ -558,8 +574,144 @@
         <p><strong>Note:</strong> In this game, the “TSO” will activate mFRR for the gas turbines to maintain grid stability. The effects of gas reserve activation are gradual, however, and you must take the necessary actions with your battery to ensure grid stability as well.</p>
       </div>
     </div>
+    <div class="accordion-item">
+        <button class="accordion-button" data-target="#bessContent">
+          BESS
+        </button>
+        <div id="bessContent" class="accordion-content">
+          <p>
+            Battery Energy Storage Systems (BESS) offer rapid and precise power adjustments, making them well-suited for balancing markets. 
+            Flextools leverages BESS flexibility by providing automatic local control (via the Enformer device) to respond quickly to deviations 
+            in grid frequency.
+          </p>
+          <ul>
+            <li><strong>Response Speed:</strong> Sub-second control, enabling fast frequency response</li>
+          </ul>
+      
+          <h4>BESS’s Role</h4>
+          <ul>
+            <li><strong>Stabilizing the Grid:</strong> Can absorb or inject power instantly to counter frequency fluctuations.</li>
+            <li><strong>Renewable Integration:</strong> Mitigates variability from solar and wind generation by smoothing output.</li>
+            <li><strong>Peak Shaving:</strong> Helps manage peak loads, reducing stress on the grid.</li>
+          </ul>
+      
+          <h4>Challenges</h4>
+          <ul>
+            <li><strong>Limited Energy Capacity:</strong> BESS energy reserves can deplete, reducing long-duration support.</li>
+            <li><strong>High Capital Costs:</strong> Batteries require significant upfront investment and careful lifecycle management.</li>
+            <li><strong>Regulatory Barriers:</strong> Market rules for storage participation vary and may limit revenue streams.</li>
+          </ul>
+      
+          <p>
+            <strong>Note:</strong> In this game, if you dedicate BESS capacity to a specific service (like FCR-D), you may be unable 
+            to simultaneously provide other ancillary services (e.g., FCR-N) with the same capacity.
+          </p>
+        </div>
+      </div>
+
+      <div class="accordion-item">
+        <button class="accordion-button" data-target="#windContent">
+          WIND
+        </button>
+        <div id="windContent" class="accordion-content">
+          <p>
+            Wind turbines convert kinetic energy from the wind into electrical power. Because wind is intermittent, managing 
+            output to provide balancing services requires either curtailment or additional flexibility strategies (e.g., 
+            coupling with BESS or demand response).
+          </p>
+          <ul>
+            <li><strong>Minimum Capacity:</strong> Projects vary, but market participation often has a 1 MW threshold.</li>
+            <li><strong>Control Mechanisms:</strong> Can be regulated through pitch control, rotor speed, and external 
+              power setpoints.
+            </li>
+          </ul>
+      
+          <h4>Wind Generation’s Role</h4>
+          <ul>
+            <li><strong>Clean Energy Supply:</strong> Reduces reliance on fossil fuels and lowers emissions.</li>
+            <li><strong>Flexible Curtailment:</strong> Can participate in upward or downward regulation when equipped with 
+              advanced control systems.
+            </li>
+            <li><strong>Grid Support:</strong> Modern wind farms can provide reactive power and inertia-like services with 
+              power electronics.
+            </li>
+          </ul>
+      
+          <h4>Challenges</h4>
+          <ul>
+            <li><strong>Weather Dependency:</strong> Output can be highly variable and unpredictable.</li>
+            <li><strong>Complex Forecasting:</strong> Accurate wind predictions are necessary but can be difficult to achieve.</li>
+            <li><strong>Reduced Inertia:</strong> Wind turbines provide less rotational inertia than traditional power plants, 
+              increasing the need for fast frequency response.
+            </li>
+          </ul>
+      
+          <p>
+            <strong>Note:</strong> In this game, wind generation can provide upward or downward regulation if equipped with 
+            flexible controls. Curtailment strategies may reduce total energy yield but can earn revenue through balancing markets.
+          </p>
+        </div>
+      </div>
+      
+      <!-- Solar Generation Accordion Item -->
+      <div class="accordion-item">
+        <button class="accordion-button" data-target="#solarContent">
+          SOLAR PV
+        </button>
+        <div id="solarContent" class="accordion-content">
+          <p>
+            Solar PV systems convert sunlight into electricity. Like wind, solar output fluctuates with resource availability, 
+            cloud cover, and time of day. Providing balancing services typically involves oversizing the inverter or pairing 
+            solar with storage.
+          </p>
+          <ul>
+            <li><strong>Minimum Capacity:</strong> Often 1 MW for market participation, depending on local regulations.</li>
+            <li><strong>Response Characteristics:</strong> Can rapidly adjust output within inverter limits, but only 
+              when irradiance is sufficient.
+            </li>
+          </ul>
+      
+          <h4>Solar Generation’s Role</h4>
+          <ul>
+            <li><strong>Peak Generation:</strong> Contributes clean power during daytime, offsetting demand peaks.</li>
+            <li><strong>Flexibility with Storage:</strong> Coupling solar with batteries can enable real-time balancing and 
+              increase revenue streams.
+            </li>
+            <li><strong>Distributed Resource:</strong> Rooftop and utility-scale PV can both participate in grid services if 
+              properly aggregated.
+            </li>
+          </ul>
+      
+          <h4>Challenges</h4>
+          <ul>
+            <li><strong>Intermittency:</strong> Cloud cover and daily cycles limit reliability for continuous regulation.</li>
+            <li><strong>Inverter Limitations:</strong> Must be designed to provide dynamic controls (voltage, frequency) 
+              and not all inverters are capable.
+            </li>
+            <li><strong>Grid Integration:</strong> High solar penetration can lead to over-voltage or reverse power flow 
+              issues without proper planning.
+            </li>
+          </ul>
+      
+          <p>
+            <strong>Note:</strong> In this game, solar plants can be curtailed for downward regulation or ramped up (when 
+            possible) for upward regulation. When paired with storage, solar sites can also participate in fast-response 
+            services like FCR-D or FCR-N.
+          </p>
+        </div>
+      </div>
+
+
+
+
   </div>
+
   
+
+
+        
+
+
 
   <!-- External or inline JS -->
   <script src="game_logic.js"></script>
