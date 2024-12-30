@@ -292,6 +292,7 @@
   /* Console */
   .game-console {
     width: 100%;
+    max-width: 1200px;
     max-height: 150px;
     overflow-y: auto;
     background-color: #000000;
@@ -585,7 +586,7 @@
     position: fixed;
     top: 0;
     right: -100%;
-    width: 300px;
+    width: 500px;
     height: 100%;     /* Fill the viewport vertically */
     overflow-y: auto; /* Enable vertical scrolling for overflowing content */
     background-color: #1C1C1C;
@@ -686,7 +687,7 @@
     }
     
     .info-pane {
-      display: none; /* Hide info pane on smaller screens */
+    /*  display: none; /* Hide info pane on smaller screens */
     }
   }
   
