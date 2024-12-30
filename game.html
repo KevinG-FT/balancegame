@@ -21,15 +21,14 @@
               <h2>Welcome to the Balancing Game!</h2>
               <p>
                 You are the owner and operator of a battery that is connected to Miðskar’s isolated grid. 
-                Some wind and solar generation capacity has been introduced 
-                but Miðskar is today still reliant on gas to meet its energy needs. 
-                Your goal is to contribute to grid stability via participation in Nordic balancing 
+                Wind and solar generation capacity has been introduced but Miðskar is today still reliant on 
+                gas to meet its energy needs. Your goal is to contribute to grid stability via participation in balancing 
                 markets, earn revenue, and keep your battery healthy. 
               </p>
               <p>
-                Ultimately, you want to add battery capacity so Miðskar can safely scale 
-                up its wind and solar generation and completely phase out gas. But first you must keep the grid stable 
-                and earn revenue.
+                Ultimately, you want to add battery capacity so Miðskar can safely scale up its wind and solar 
+                generation and phase out gas. But first you must keep the grid stable and earn revenue.
+                You earn additional points by ending the game with the battery's SoC near 50%, keeping battery cycles under 30.
               </p>
               <p>
                 Your decisions will help the island nation achieve its energy goals while maintaining grid stability!
@@ -42,6 +41,7 @@
     <button id="introToggleButton" class="intro-toggle-button">
         About the game
     </button>
+  
     <!-- Settings Button -->
     <button id="settingsButton" class="settings-button">⚙️</button>
 
@@ -335,6 +335,10 @@
       </div>
     </div>
 
+    <button id="infoToggleButton" class="info-toggle-button">
+        Market Info
+      </button>
+
     <!-- Game Container (Left) -->
     <div class="game-container">
 
@@ -346,7 +350,7 @@
           
           <div class="game-controls">
             <button id="startGame" class="button">Start</button>
-            <button id="restartGame" class="button">Stop</button>
+            <button id="restartGame" class="restart-button">Stop</button>
           </div>
           <div class="status-timer" id="timer">TIME LEFT: 3:00</div>
           <div id="revenue" class="revenue">Revenue: €0</div>
@@ -417,9 +421,9 @@
           <div id="batteryLabel">50.0% State of Charge</div>
           <div id="cycleCount">Battery Cycles: 0</div>
           <div class="battery-specs">
-            <div>Power Rating: 20 MW</div>
-            <div>Energy Capacity: 40 MWh</div>
-            <div>C-rate: 0.5</div>
+            <div id="batteryPowerRating"></div>
+            <div id="batteryEnergyCapacity"></div>
+            <div id="batteryCRate"></div>
           </div>
           <div id="batteryWarning" class="battery-warning"></div>
         </div>
@@ -465,8 +469,7 @@
     </div>
 
     <!-- Info Pane (Right) -->
-    <!-- Info Pane (Right) -->
-<div class="info-pane">
+ <div id="infoPane" class="info-pane">
     <h2>Nordic Balancing Markets</h2>
     <p>
       Learn about the various reserves and mechanisms used to stabilize the grid and maintain balance in the Nordic power system.

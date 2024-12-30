@@ -14,6 +14,14 @@ let gameActive = false;     // Indicates whether the game is active
 let mainLoop = null;        // The setInterval handle for our main loop
 
 /*****************************************************
+ * BATTERY CONSTANTS
+ *****************************************************/
+const BATTERY_POWER_RATING_MW = 80;  // Maximum charge/discharge power
+const BATTERY_ENERGY_CAPACITY_MWH = 160;  // Total energy capacity
+// define a C-rate, or compute it
+const BATTERY_CRATE = 0.5; // or (BATTERY_POWER_RATING_MW / BATTERY_ENERGY_CAPACITY_MWH)
+
+/*****************************************************
  * STATE VARIABLES
  *****************************************************/
 
@@ -240,6 +248,14 @@ function initializeGame() {
 window.onload = () => {
   initializeGame();
   openIntroPanel();
+
+  const powerRatingEl = document.getElementById('batteryPowerRating');
+  const capacityEl    = document.getElementById('batteryEnergyCapacity');
+  const cRateEl       = document.getElementById('batteryCRate');
+
+  powerRatingEl.textContent   = `Power Rating: ${BATTERY_POWER_RATING_MW} MW`;
+  capacityEl.textContent      = `Energy Capacity: ${BATTERY_ENERGY_CAPACITY_MWH} MWh`;
+  cRateEl.textContent         = `C-rate: ${BATTERY_CRATE.toFixed(2)}`;
 };
 
 /*****************************************************
@@ -973,42 +989,54 @@ toggles.ffrToggle.onchange = () => {
  * BATTERY ACTIONS
  *****************************************************/
 buttons.charge.onclick = () => {
-  if (soc >= settings.batteryMaxSoC) {
-    logToConsole("Battery is already fully charged");
-    return;
-  }
-  const power = 20;
-  const chargeEnergyMWh = power * (settings.uiUpdateIntervalMs / 3600000);
-  const cost = settings.batteryCostPerMWh * chargeEnergyMWh;
+    if (soc >= settings.batteryMaxSoC) {
+      logToConsole("Battery is already fully charged");
+      return;
+    }
+    // Use the BATTERY_POWER_RATING_MW constant
+    const power = BATTERY_POWER_RATING_MW;  
+    const chargeEnergyMWh = power * (settings.uiUpdateIntervalMs / 3600000);
+    const cost = settings.batteryCostPerMWh * chargeEnergyMWh;
+  
+    // SoC changes: TBD: Refine this logic depending on how we 
+    // want SoC (%) to correlate with total MWh capacity.
+    soc = Math.min(
+      settings.batteryMaxSoC,
+      soc + settings.batterySoCChangePerChargeMWh
+    );
+  
+    revenue -= cost;
+    cycleCount += 0.1;
+  
+    frequency = Math.max(48, Math.min(52, frequency - 0.01));
+  
+    updateUI();
+    logToConsole(`Battery charged: -€${cost.toFixed(4)}, SoC=${soc.toFixed(1)}%`);
+  };
 
-  soc = Math.min(settings.batteryMaxSoC, soc + settings.batterySoCChangePerChargeMWh);
-  revenue -= cost;
-  cycleCount += 0.1;
-
-  frequency = Math.max(48, Math.min(52, frequency - 0.01));
-
-  updateUI();
-  logToConsole(`Battery charged: -€${cost.toFixed(4)}, SoC=${soc.toFixed(1)}%`);
-};
-
-buttons.discharge.onclick = () => {
-  if (soc <= settings.batteryMinSoC) {
-    logToConsole("Battery is already fully discharged");
-    return;
-  }
-  const power = 20;
-  const dischargeEnergyMWh = power * (settings.uiUpdateIntervalMs / 3600000);
-  const income = settings.batteryIncomePerMWh * dischargeEnergyMWh;
-
-  soc = Math.max(settings.batteryMinSoC, soc - settings.batterySoCChangePerDischargeMWh);
-  revenue += income;
-  cycleCount += 0.1;
-
-  frequency = Math.max(48, Math.min(52, frequency + 0.01));
-
-  updateUI();
-  logToConsole(`Battery discharged: +€${income.toFixed(4)}, SoC=${soc.toFixed(1)}%`);
-};
+  buttons.discharge.onclick = () => {
+    if (soc <= settings.batteryMinSoC) {
+      logToConsole("Battery is already fully discharged");
+      return;
+    }
+    const power = BATTERY_POWER_RATING_MW; 
+    const dischargeEnergyMWh = power * (settings.uiUpdateIntervalMs / 3600000);
+    const income = settings.batteryIncomePerMWh * dischargeEnergyMWh;
+  
+    soc = Math.max(
+      settings.batteryMinSoC,
+      soc - settings.batterySoCChangePerDischargeMWh
+    );
+  
+    revenue += income;
+    cycleCount += 0.1;
+  
+    frequency = Math.max(48, Math.min(52, frequency + 0.01));
+  
+    updateUI();
+    logToConsole(`Battery discharged: +€${income.toFixed(4)}, SoC=${soc.toFixed(1)}%`);
+  };
+  
 
 /*****************************************************
  * SETTINGS PANEL
@@ -1086,5 +1114,31 @@ if (introToggleButton) {
     } else {
       openIntroPanel();
     }
+  });
+}
+
+/*****************************************************
+ * INTRO PANEL FUNCTIONALITY
+ *****************************************************/
+
+// Grab references to the Intro Panel and Toggle Button by their IDs
+const InfoPane = document.getElementById('infoPane');
+const InfoToggleButton = document.getElementById('infoToggleButton');
+
+function openInfoPane() {
+    InfoPane.classList.add('active');
+    InfoToggleButton.classList.add('close-mode');
+    InfoToggleButton.textContent = "✕";
+  }
+  function closeInfoPane() {
+    InfoPane.classList.remove('active');
+    InfoToggleButton.classList.remove('close-mode');
+    InfoToggleButton.textContent = "Market Info";
+  }
+
+if (InfoToggleButton) {
+  InfoToggleButton.addEventListener('click', () => {
+    InfoPane.classList.contains('active') ? closeInfoPane() : openInfoPane();
+    
   });
 }

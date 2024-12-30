@@ -119,6 +119,7 @@
     font-weight: bold;
     transition: background-color 0.3s ease, transform 0.2s ease;
   }
+
   
   .save-button {
     background-color: #107C10; /* Xbox Green */
@@ -189,6 +190,7 @@
     flex-wrap: wrap;
   }
   
+
   /* Buttons */
   .button {
     font-size: 1rem;
@@ -209,6 +211,18 @@
   .button:disabled {
     background-color: #555555;
     cursor: not-allowed;
+  }
+
+  /* Buttons */
+  .restart-button {
+    font-size: 1rem;
+    padding: 8px 16px;
+    background-color: #B71C1C; /* Xbox Green */
+    color: #FFFFFF;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
   }
   
   /* Environment stats */
@@ -547,14 +561,12 @@
     background-color: #B71C1C; /* Reddish for a "close" vibe */
   }
 
-  
-  
   /* The "About the game" button */
   .intro-toggle-button {
     position: fixed;
-    right: 20px;
-    top: 5px;
-    z-index: 30000;
+    left: 5px;
+    top: 0px;
+    z-index: 10000;
     background-color: #107C10; /* Xbox Green */
     color: #FFFFFF;
     border: none;
@@ -570,17 +582,55 @@
   }
   /* Info Pane */
   .info-pane {
+    position: fixed;
+    top: 0;
+    right: -100%;
     width: 300px;
-    background-color: #1C1C1C; /* Dark gray */
-    border: 2px solid #107C10; /* Xbox Green border */
+    height: 100%;     /* Fill the viewport vertically */
+    overflow-y: auto; /* Enable vertical scrolling for overflowing content */
+    background-color: #1C1C1C;
+    border: 2px solid #107C10;
     border-radius: 10px;
     padding: 20px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.6);
-    font-size: .9rem;
+    font-size: 0.9rem;
     font-family: sans-serif;
+    z-index: 1500;
     line-height: 1.6;
     color: #FFFFFF;
+    transition: right 0.3s ease; /* So it slides in/out */
   }
+  
+  .info-pane.active {
+    right: 0; /* slides into view */
+  }
+  
+  
+  /* This is the correct selector to slide it in */
+  .info-pane.active {
+    right: 0; /* moves from -100% to 0 */
+  }
+  
+  /* Button style (optional) */
+  .info-toggle-button {
+    position: fixed;
+    right: 10px; 
+    top: 5px;
+    z-index: 1501;
+    background-color: #107C10;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9em;
+    margin-top: 3px;
+    padding: 8px 12px;
+  }
+  
+  .info-toggle-button.close-mode {
+    background-color: #B71C1C;
+  }
+
   
   .info-pane h2 {
     margin-bottom: 12px;
