@@ -232,31 +232,44 @@
     gap: 15px;
     margin-bottom: 20px;
     font-size: 1rem;
-    /* Ensuring items are smaller to fit two rows */
   }
   
+  /* Each stat block */
   .environment-stats > div {
-    padding: 8px 12px;
+    /* Use relative positioning so child elements can be absolutely placed */
+    position: relative;
+    width: 140px;
+    height: 65px; /* Fixed height to align items consistently */
+    padding: 4px 6px;
     background-color: #2C2C2C;
     border-radius: 6px;
     border: 1px solid #555555;
-    width: 140px; /* Reduced width */
     text-align: center;
   }
   
+  /* Label at the top */
   .environment-stats .generic-label {
+    position: absolute;
+    top: 4px;  /* or whatever spacing you want */
+    left: 0;
+    right: 0;
+    margin: 0;
+    
     font-weight: bold;
-    color: #FFFFFF;
+    color: #12ac12;
     font-size: 0.8rem;
-    margin-bottom: 5px;
-    text-align: top;
   }
   
+  /* Data item pinned at the bottom */
   .environment-stats .data-item {
+    position: absolute;
+    bottom: 4px; /* or whatever spacing you want */
+    left: 0;
+    right: 0;
+  
     font-weight: 600;
     font-size: 1rem;
-    text-align: bottom;
-    color: #12ac12; /* Xbox Green for data */
+    color: #FFFFFF;
   }
   
   /* Frequency Display */

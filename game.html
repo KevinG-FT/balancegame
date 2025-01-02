@@ -18,21 +18,24 @@
                to provide a gradient or semi-opaque effect -->
           <div class="intro-overlay">
             <div class="intro-text-content">
-              <h2>Welcome to the Balancing Game!</h2>
+              <h2>Welcome to the Balance To Zero Game!</h2>
               <p>
                 You are the owner and operator of a battery that is connected to Miðskar’s isolated grid. 
-                Wind and solar generation capacity has been introduced but Miðskar is today still reliant on 
-                gas to meet its energy needs. Your goal is to contribute to grid stability via participation in balancing 
-                markets, earn revenue, and keep your battery healthy. 
+                Wind and solar generation capacity have been introduced but Miðskar is today still reliant on 
+                gas to meet its energy needs. Your goal is to help keep Miðskar’s grid stabile using your battery 
+                in balancing markets, earn revenue, and keep your battery healthy. 
               </p>
               <p>
                 Ultimately, you want to add battery capacity so Miðskar can safely scale up its wind and solar 
-                generation and phase out gas. But first you must keep the grid stable and earn revenue.
-                You earn additional points by ending the game with the battery's SoC near 50%, keeping battery cycles under 30.
+                generation and phase out gas. 
               </p>
               <p>
                 Your decisions will help the island nation achieve its energy goals while maintaining grid stability!
               </p>
+              <p>
+                <strong>Instructions:</strong>  <br> Use the controls to manage your battery and participate in the balancing markets. 
+                Monitor the environment and grid stats to make informed decisions.  
+                Keep an eye on the frequency meter, timer, and revenue to track your progress.
             </div>
           </div>
         </div>
@@ -344,7 +347,7 @@
 
       <!-- Header with Title & Controls -->
       <div class="header-bar">
-        <div class="header-title">Balancing Game</div>
+        <div class="header-title">Balance To Zero</div>
         <div id="lossMessage" class="loss-message"></div>
         <div class="top-bar">
           
@@ -359,39 +362,57 @@
 
       <!-- Environment Stats -->
       <div class="environment-stats">
-        <div class="generic-label">SPOT PRICE
+        <div>
+          <div class="generic-label">SPOT PRICE</div>
           <div id="spotPrice" class="data-item">€0.0555</div>
         </div>
-        <div class="generic-label">WHOLESALE PRICE
+        <div>
+          <div class="generic-label">WHOLESALE PRICE</div>
           <div id="wholesalePrice" class="data-item">€0.02775</div>
         </div>
-        <div class="generic-label">TIME OF DAY 
+        <div>
+          <div class="generic-label">IMBALANCE PRICE</div>
+          <div id="imbalancePrice" class="data-item">€0.05</div>
+        </div>
+        <div>
+          <div class="generic-label">IMBALANCE</div>
+          <div id="imbalance" class="data-item">0 MW</div>
+        </div>
+        <div>
+          <div class="generic-label">TIME OF DAY </div>
           <div id="timeOfDay" class="data-item">00:00</div>
         </div>
-        <div class="generic-label">TEMPERATURE
+        <div>
+          <div class="generic-label">TEMPERATURE</div>
           <div id="temperature" class="data-item">20°C</div>
         </div>
-        <div class="generic-label">WIND
+        <div>
+          <div class="generic-label">WIND</div>
           <div id="wind" class="data-item">5 m/s</div>
         </div>
-        <div class="generic-label">SUN
+        <div>
+          <div class="generic-label">SUN</div>
           <div id="sun" class="data-item">Dark</div>
         </div>
-        <div class="generic-label">WIND GENERATION
-          <!-- Now displayed in MW -->
+       <div>
+          <div class="generic-label">WIND GENERATION</div>
           <div id="windGeneration" class="data-item">5 MW</div>
         </div>
-        <div class="generic-label">PV GENERATION
+        <div>
+          <div class="generic-label">PV GENERATION</div>
           <div id="pvGeneration" class="data-item">0 MW</div>
         </div>
-        <div class="generic-label">FOSSIL GENERATION
+        <div>
+          <div class="generic-label">FOSSIL GENERATION</div>
             <!-- e.g., Gas -->
             <div id="baselineGeneration" class="data-item">0 MW</div>
           </div>
-        <div class="generic-label">TOTAL GENERATION
+        <div>
+          <div class="generic-label">TOTAL GENERATION</div>
           <div id="generation" class="data-item">5 MW</div>
         </div>
-        <div class="generic-label">DEMAND
+        <div>
+          <div class="generic-label">DEMAND</div>
           <div id="demand" class="data-item">0 MW</div>
         </div>
       </div>
