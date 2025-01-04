@@ -426,29 +426,44 @@
       <!-- Console -->
       <div id="gameConsole" class="game-console"></div>
 
-      <!-- Battery Display -->
-      <div class="battery-display">
-        <!-- This absolutely-centered element houses the battery rectangle -->
-        <div class="battery-center">
-          <div class="battery-container">
-            <div id="batterySoc" class="battery-soc xbox-theme"></div>
+     <!-- Battery Display -->
+     <div class="battery-display">
+      <div class="battery-content">
+    
+        <!-- Batteries on the left -->
+        <div class="battery-center" id="batteryCenter">
+          <!-- The first/default battery container -->
+          <div class="battery-container" id="batteryContainer1">
+            <div id="batterySoc1" class="battery-soc xbox-theme"></div>
             <div class="critical-line low"></div>
             <div class="critical-line high"></div>
           </div>
         </div>
-      
-
-        <div class="battery-info">
-          <div id="batteryLabel">50.0% State of Charge</div>
-          <div id="cycleCount">Battery Cycles: 0</div>
-          <div class="battery-specs">
-            <div id="batteryPowerRating"></div>
-            <div id="batteryEnergyCapacity"></div>
-            <div id="batteryCRate"></div>
+    
+        <!-- Info + Controls on the right -->
+        <div class="battery-info-and-controls">
+    
+          <!-- Battery Information Area -->
+          <div class="battery-info">
+            <div id="batteryLabel">50.0% State of Charge</div>
+            <div id="cycleCount">Battery Cycles: 0</div>
+            <div class="battery-specs">
+              <div id="batteryPowerRating"></div>
+              <div id="batteryEnergyCapacity"></div>
+              <div id="batteryCRate"></div>
+            </div>
+            <div id="batteryWarning" class="battery-warning"></div>
           </div>
-          <div id="batteryWarning" class="battery-warning"></div>
-        </div>
-      </div>
+    
+          <!-- Buttons to add or remove battery units -->
+          <div class="battery-controls">
+            <button id="removeBattery" disabled>-</button>
+            <button id="addBattery">+</button>
+          </div>
+    
+        </div><!-- end battery-info-and-controls -->
+      </div><!-- end battery-content -->
+    </div><!-- end battery-display -->
 
       <!-- Controls (FCR-D, FFR, charge, discharge) -->
       <div class="controls">

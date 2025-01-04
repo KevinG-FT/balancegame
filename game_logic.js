@@ -17,6 +17,8 @@ let mainLoop = null;        // The setInterval handle for our main loop
  *****************************************************/
 const BATTERY_POWER_RATING_MW = 80;  // Maximum charge/discharge power
 const BATTERY_ENERGY_CAPACITY_MWH = 160;  // Total energy capacity
+const SINGLE_BATTERY_POWER_RATING_MW = 80;       // per battery unit
+const SINGLE_BATTERY_ENERGY_CAPACITY_MWH = 160;  // per battery unit
 // define a C-rate, or compute it
 const BATTERY_CRATE = 0.5; // or (BATTERY_POWER_RATING_MW / BATTERY_ENERGY_CAPACITY_MWH)
 
@@ -241,6 +243,8 @@ function initializeGame() {
   loadSettingsFromLocalStorage();
   updateDerivedSettings();
   updateUI();
+  updateBatteryStats();
+  updateBatteryButtons();
   logToConsole("Game initialized with MW-based settings");
 }
 
@@ -874,14 +878,20 @@ function startMainLoop() {
  * UI & GAME-OVER
  *****************************************************/
 function updateUI() {
-  // Battery SoC
-  if (elements.batterySoc) {
+  // Old, single Battery SoC updates
+/*   if (elements.batterySoc) {
     elements.batterySoc.style.height = `${soc}%`;
     elements.batterySoc.style.backgroundColor = soc>90 || soc<10 ? "red" : "#00FF00";
   }
   if (elements.batteryLabel) {
     elements.batteryLabel.textContent = `${soc.toFixed(1)}% State of Charge`;
-  }
+  } */
+      
+    // Update the multiple batteries SoC visually:
+    document.getElementById('batteryLabel').textContent = soc.toFixed(1) + '% SoC';
+    setAllBatterySoC(soc);
+    // Adjust color for low or high SoC:
+    updateBatteryColorClasses(soc);
 
   // revenue & cycles
   if (elements.revenue) {
@@ -1072,6 +1082,132 @@ function stopGame() {
   
   logToConsole("Game stopped");
   updateButtonStates();
+}
+
+// --------------------------------------
+// ADDING / REMOVING BATTERIES
+// --------------------------------------
+// We'll compute the total from however many units we have
+let batteryCount = 1;
+let totalBatteryPowerRatingMW = SINGLE_BATTERY_POWER_RATING_MW * batteryCount;
+let totalBatteryEnergyCapacityMWh = SINGLE_BATTERY_ENERGY_CAPACITY_MWH * batteryCount;
+// If you want to store cycles, SoC, etc., do so here as well
+
+// DOM references
+const batteryCenter = document.getElementById('batteryCenter');
+const addBatteryBtn = document.getElementById('addBattery');
+const removeBatteryBtn = document.getElementById('removeBattery');
+
+
+
+/*****************************************************
+ * EVENT LISTENERS FOR BATTERY ADD/REMOVE
+ *****************************************************/
+// Add a battery (up to some max, e.g. 5)
+const maxBatteries = 5;
+
+addBatteryBtn.addEventListener('click', () => {
+  if (batteryCount < maxBatteries) {
+    batteryCount++;
+
+    // Create the container
+    const newBatteryContainer = document.createElement('div');
+    newBatteryContainer.classList.add('battery-container');
+    newBatteryContainer.id = 'batteryContainer' + batteryCount;
+
+    // Create the SoC element
+    const newBatterySoc = document.createElement('div');
+    newBatterySoc.classList.add('battery-soc', 'xbox-theme');
+    newBatterySoc.id = 'batterySoc' + batteryCount;
+
+    // Copy SoC height from the first battery (or set your own default)
+    const firstBatterySoc = document.getElementById('batterySoc1');
+    newBatterySoc.style.height = firstBatterySoc.style.height || '50%';
+
+    // Add the critical lines
+    const lowLine = document.createElement('div');
+    lowLine.classList.add('critical-line', 'low');
+    const highLine = document.createElement('div');
+    highLine.classList.add('critical-line', 'high');
+
+    // Assemble it
+    newBatteryContainer.appendChild(newBatterySoc);
+    newBatteryContainer.appendChild(lowLine);
+    newBatteryContainer.appendChild(highLine);
+    batteryCenter.appendChild(newBatteryContainer);
+
+    // Update stats and button states
+    updateBatteryStats();
+    updateBatteryButtons();
+  }
+});
+
+// Remove a battery (down to 1 minimum)
+removeBatteryBtn.addEventListener('click', () => {
+  if (batteryCount > 1) {
+    const lastBattery = document.getElementById('batteryContainer' + batteryCount);
+    if (lastBattery) {
+      batteryCenter.removeChild(lastBattery);
+      batteryCount--;
+    }
+    // Update stats and button states
+    updateBatteryStats();
+    updateBatteryButtons();
+  }
+});
+
+
+/*****************************************************
+ * FUNCTIONS
+ *****************************************************/
+// Recalculate total battery stats and update HTML
+function updateBatteryStats() {
+  // Adjust total capacity/power based on how many battery units we have
+  totalBatteryPowerRatingMW = SINGLE_BATTERY_POWER_RATING_MW * batteryCount;
+  totalBatteryEnergyCapacityMWh = SINGLE_BATTERY_ENERGY_CAPACITY_MWH * batteryCount;
+  
+  // Example: Calculate C-Rate (Power / Capacity)
+  const cRate = totalBatteryPowerRatingMW / totalBatteryEnergyCapacityMWh;
+
+  // Update DOM
+  const batteryPowerRatingEl = document.getElementById('batteryPowerRating');
+  const batteryEnergyCapacityEl = document.getElementById('batteryEnergyCapacity');
+  const batteryCRateEl = document.getElementById('batteryCRate');
+
+  batteryPowerRatingEl.textContent = `Power Rating: ${totalBatteryPowerRatingMW} MW`;
+  batteryEnergyCapacityEl.textContent = `Energy Capacity: ${totalBatteryEnergyCapacityMWh} MWh`;
+  batteryCRateEl.textContent = `C-Rate: ${cRate.toFixed(2)} c`;
+}
+
+// Enable/disable add/remove buttons according to current batteryCount
+function updateBatteryButtons() {
+  removeBatteryBtn.disabled = (batteryCount <= 1);
+  addBatteryBtn.disabled = (batteryCount >= maxBatteries);
+}
+
+// set SoC for ALL units 
+function setAllBatterySoC(socValue) {
+  const batterySocs = document.querySelectorAll('.battery-soc');
+  batterySocs.forEach((socEl) => {
+    socEl.style.height = socValue + '%';
+  });
+  logToConsole(`All batteries set to ${socValue}% SoC`);
+}
+
+function updateBatteryColorClasses(socValue) {
+  const batterySocs = document.querySelectorAll('.battery-soc');
+  batterySocs.forEach((socEl) => {
+    // Remove all possible SoC color classes first
+    socEl.classList.remove('low', 'high');
+
+    // For example, consider < 20% as low, > 90% as high
+    if (socValue < 20) {
+      socEl.classList.add('low');   // .battery-soc.low { background: #B71C1C; }
+    } else if (socValue > 90) {
+      socEl.classList.add('high');  // .battery-soc.high { background: #FFC107; }
+    } 
+    // else remain normal (the "xbox-theme" green).
+  });
 }
 
 /*****************************************************
