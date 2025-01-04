@@ -2,15 +2,14 @@
  * GLOBAL VARIABLES & SETTINGS
  *****************************************************/
 
-// We no longer define a top-level let settings = {...} with large GW numbers.
-// Instead, we rely solely on getDefaultSettings() to define them in MW.
 
-let settings = null; // We'll assign this in initializeGame()
+let settings = null; // assign this in initializeGame()
 
 // Main game variables
 let timeRemaining = 0;      // Time left in the game (seconds)
 let timeOfDayMinutes = 0;   // Current time of day in minutes (0..1440)
 let gameActive = false;     // Indicates whether the game is active
+let gamePaused = false;
 let mainLoop = null;        // The setInterval handle for our main loop
 
 /*****************************************************
@@ -105,7 +104,7 @@ const elements = {
 
 const buttons = {
   startGame:   document.getElementById('startGame'),
-  restartGame: document.getElementById('restartGame'),
+  stopGame: document.getElementById('stopGame'),
   charge:      document.getElementById('charge'),
   discharge:   document.getElementById('discharge'),
   saveSettings:  document.getElementById('saveSettings'),
@@ -248,6 +247,7 @@ function initializeGame() {
 window.onload = () => {
   initializeGame();
   openIntroPanel();
+  updateButtonStates(); // ensures Start is enabled, Stop is disabled
 
   const powerRatingEl = document.getElementById('batteryPowerRating');
   const capacityEl    = document.getElementById('batteryEnergyCapacity');
@@ -383,9 +383,9 @@ function calculateDemand(tMinutes) {
   return demandMW;
 }
 
-// Then in the main loop or environment function, we do a PV ramp:
+// in the main loop or environment function, do a PV ramp:
 function applyPVRamp(dt) {
-    const pvRampRate = 2; // MW per second, for example
+    const pvRampRate = 2; // MW per second
     const maxChange = pvRampRate * dt;
   
     if (currentPVmw < targetPVmw) {
@@ -397,37 +397,38 @@ function applyPVRamp(dt) {
 
 /** updateEnvironment */
 function updateEnvironment(tMinutes, dt=1) {
-    // 1) Update environment elements
+
+    // Update environment elements
     currentTemperature = getTemperature(tMinutes);
     maybeUpdateSunCondition(tMinutes);
     updateWind(tMinutes);
   
     currentDemandMW = calculateDemand(tMinutes);
   
-    // 2) Wind
+    // Wind
     windGenerationMW = Math.min(currentWind, settings.windGenerationMaxMW);
   
-    // 3) PV ramp
-    //   a) get sunFactor from currentSunCondition
+    // PV ramp
+    //   get sunFactor from currentSunCondition
     let sunFactor = 0;
     if (currentSunCondition === "Sunny") sunFactor = 1;
     else if (currentSunCondition === "Partly Cloudy") sunFactor = 0.6;
     else if (currentSunCondition === "Cloudy") sunFactor = 0.3;
     // "Dark" => 0
   
-    //   b) set target
+    //   set target
     targetPVmw = sunFactor * settings.pvGenerationMaxMW;
   
-    //   c) ramp
+    //   ramp
     applyPVRamp(1);
   
-    //   d) final assignment
+    //   final assignment
     pvGenerationMW = currentPVmw;
   
-    // 4) Sum total generation
+    // Sum total generation
     currentGenerationMW = windGenerationMW + pvGenerationMW + currentGasMW;
   
-    // 5) Update UI ...
+    // Update UI 
 
   if (elements.windGeneration) {
     elements.windGeneration.textContent = `${windGenerationMW.toFixed(1)} MW`;
@@ -485,7 +486,7 @@ function updatePrices(tMinutes) {
     spotPrice -= settings.spotPriceImbalanceLowerScale * (netImbalanceMW / 50);
   }
   spotPrice = Math.max(settings.spotPriceClamp.min, Math.min(settings.spotPriceClamp.max, spotPrice));
-  const wholesalePrice = spotPrice * 0.5; // should be average of spot price over time
+  const wholesalePrice = spotPrice * 0.5; // TBD: should be average of spot price over time
 
   if (elements.spotPrice) {
     elements.spotPrice.textContent = `€${spotPrice.toFixed(3)}/kWh`;
@@ -510,7 +511,7 @@ function updateFrequency() {
   const clamped = Math.max(-0.5, Math.min(0.5, freqChange));
   frequency += clamped;
 
-  // random noise
+  // random noise for gameplay
   frequency += (Math.random() - 0.5) * settings.frequencyNoiseRange;
 
   if (elements.frequencyArrow) {
@@ -691,8 +692,122 @@ function updateFCRDDown(deltaTime) {
  * FFR LOGIC
  *****************************************************/
 function updateFFR(deltaTimeSec) {
-  // You can keep your existing logic here
-  // e.g. check triggers, handle FFR activation, etc.
+  function updateFFR(deltaTimeSec) {
+    // Check if FFR can be activated
+    isFfrProfileWindow = checkFfrProfileWindow();
+    isFfrFlexOrdered = checkFfrFlexOrdered();
+  
+    if (!isBatteryAvailable) {
+      ffrState = "idle";
+      return;
+    }
+  
+    const ffrAvailable = isFfrProfileWindow || isFfrFlexOrdered;
+  
+    if (frequency < settings.ffrActivationThreshold && ffrState === "idle" && ffrAvailable) {
+      ffrState = "activated";
+      ffrActive = true;
+      ffrActivationTime = 0;
+      logToConsole(`FFR activated at frequency ${frequency.toFixed(2)} Hz`);
+    }
+  
+    switch(ffrState) {
+      case "activated":
+        ffrActivationTime += deltaTimeSec;
+        if (ffrActivationTime >= settings.ffrActivationDuration + settings.ffrSupportDuration) {
+          ffrState = "deactivating";
+          ffrActivationTime = 0;
+          logToConsole("FFR deactivating");
+        }
+        break;
+      case "deactivating":
+        ffrActivationTime += deltaTimeSec;
+        if (ffrActivationTime >= settings.ffrDeactivationTime) {
+          ffrState = "buffer";
+          ffrActivationTime = 0;
+          logToConsole("FFR buffer period started");
+        }
+        break;
+      case "buffer":
+        ffrActivationTime += deltaTimeSec;
+        if (ffrActivationTime >= settings.ffrBufferTime) {
+          ffrState = "recovering";
+          ffrActivationTime = 0;
+          logToConsole("FFR recovering");
+        }
+        break;
+      case "recovering":
+        ffrActivationTime += deltaTimeSec;
+        if (ffrActivationTime >= settings.ffrRecoveryTime) {
+          ffrState = "idle";
+          ffrActive = false;
+          logToConsole("FFR fully recovered and idle");
+        }
+        break;
+      default:
+        // "idle"
+        break;
+    }
+  
+    // Handle FFR Actions During Activation
+    if (ffrState === "activated") {
+      // Define how much energy FFR dispatches per second
+      const ffrDischargeMW = 1; // Example: 1 MW per second
+  
+      // Calculate energy discharged (MW * hours)
+      const energyDischarged = ffrDischargeMW * (deltaTimeSec / 3600); // Convert seconds to hours
+      ffrEnergyDischarged += energyDischarged;
+  
+      // Update State of Charge (SoC)
+      soc = Math.max(0, soc - (ffrDischargeMW * 0.1 * (deltaTimeSec / 3600))); // Assuming 0.1% SoC per MW per hour
+  
+      // Update Revenue (Assuming revenue per MWh)
+      const revenueEarned = ffrDischargeMW * 0.1 * (deltaTimeSec / 3600); // Example: 0.1 EUR per MWh
+      ffrRevenue += revenueEarned;
+      revenue += revenueEarned;
+  
+      // Update Cycle Count
+      cycleCount += 0.05 * deltaTimeSec; // Example: 0.05 cycles per second of FFR activation
+  
+      // Log FFR Activity
+      logToConsole(`FFR active: Discharged ${ffrDischargeMW} MW, Energy Discharged=${energyDischarged.toFixed(3)} MWh, SoC=${soc.toFixed(1)}%, Revenue Earned=€${revenueEarned.toFixed(4)}, Total FFR Revenue=€${ffrRevenue.toFixed(2)}, Total FFR Energy Discharged=${ffrEnergyDischarged.toFixed(3)} MWh`);
+  
+      // Update FFR Indicator (Optional)
+      if (elements.ffrIndicator) {
+        elements.ffrIndicator.classList.remove('inactive');
+        elements.ffrIndicator.classList.add('active');
+        elements.ffrIndicator.textContent = "FFR: Active";
+      }
+    } else {
+      // Update FFR Indicator to Inactive
+      if (elements.ffrIndicator) {
+        elements.ffrIndicator.classList.remove('active');
+        elements.ffrIndicator.classList.add('inactive');
+        elements.ffrIndicator.textContent = "FFR: Inactive";
+      }
+    }
+  }
+  
+  /**
+   * Check if current time is within FFR profile window.
+   * @returns {boolean} True if within profile window, else false.
+   */
+  function checkFfrProfileWindow() {
+    // Example condition: night time (22:00-07:00)
+    const hour = Math.floor(timeOfDayMinutes / 60);
+    const night = (hour >= 22 || hour < 7);
+    return night;
+  }
+  
+  /**
+   * Check if FFR is flex-ordered by TSO.
+   * @returns {boolean} True if flex-ordered, else false.
+   */
+  function checkFfrFlexOrdered() {
+    // Placeholder: Implement actual logic or schedule
+    return false;
+  }
+
 }
 
 /*****************************************************
@@ -703,48 +818,48 @@ function startMainLoop() {
   mainLoop = setInterval(() => {
     if (!gameActive) return;
 
-    // 1) Time
+    // Time
     timeOfDayMinutes += settings.compressedMinutesPerSecond;
     if (timeOfDayMinutes >= 1440) {
       timeOfDayMinutes -= 1440;
     }
 
-    // 2) Environment
+    // Environment
     updateEnvironment(timeOfDayMinutes);
 
-    // 3) Calculate netImbalance BEFORE calling updateGasDispatch
+    // Calculate netImbalance BEFORE calling updateGasDispatch
     const netImbalanceMW = currentGenerationMW - currentDemandMW;
     updateGasDispatch(netImbalanceMW);
 
-    // 4) Gas ramp
+    // Gas ramp
     applyGasRamp(1); // dt=1 second
 
-    // 5) Recalc total after gas changed
+    // Recalc total after gas changed
     currentGenerationMW = windGenerationMW + pvGenerationMW + currentGasMW;
 
-    // 6) Frequency
+    // Frequency
     updateFrequency();
 
-    // 7) FCR-N
+    // FCR-N
     updateFCRN();
 
-    // 8) FCR-D
+    // FCR-D
     updateFCRDUp(1);
     updateFCRDDown(1);
 
-    // 9) FFR
+    // FFR
     updateFFR(1);
 
-    // 10) Market Prices
+    // Market Prices
     updatePrices(timeOfDayMinutes);
 
-    // 11) UI
+    // UI
     updateUI();
 
-    // 12) Check game over
+    // Check game over
     checkGameOver();
 
-    // 13) Countdown
+    // Countdown
     timeRemaining--;
     if (timeRemaining <= 0) {
       gameActive = false;
@@ -776,7 +891,7 @@ function updateUI() {
     elements.cycleCount.textContent = `Battery Cycles: ${cycleCount.toFixed(1)}`;
   }
 
-  // ... if you have FFR metrics, do them here
+  // ... if FFR metrics, do them here
 
   // timer
   if (elements.timer) {
@@ -828,50 +943,59 @@ function checkGameOver() {
 /*****************************************************
  * BUTTON HANDLERS
  *****************************************************/
+// --------------------------------------
+// HELPER: updateButtonStates()
+// --------------------------------------
+function updateButtonStates() {
+  if (!gameActive && !gamePaused) {
+    // Fully stopped
+    buttons.startGame.textContent = "Start";
+    buttons.startGame.disabled = false;
+    buttons.startGame.classList.remove("pause-mode");
+
+    buttons.stopGame.disabled = true;
+  }
+  else if (gameActive && !gamePaused) {
+    // Running -> Pause
+    buttons.startGame.textContent = "Pause";
+    buttons.startGame.disabled = false;
+    // Add the pause-mode class here:
+    buttons.startGame.classList.add("pause-mode");
+
+    buttons.stopGame.disabled = false;
+  }
+  else if (gamePaused) {
+    // Paused -> Resume
+    buttons.startGame.textContent = "Resume";
+    buttons.startGame.disabled = false;
+    // Remove the pause-mode class (we're no longer "Pause" mode)
+    buttons.startGame.classList.remove("pause-mode");
+
+    buttons.stopGame.disabled = false;
+  }
+}
+
+
 buttons.startGame.onclick = () => {
-  if (!gameActive) {
-    gameActive = true;
-    timeRemaining = settings.gameDurationSeconds;
-    timeOfDayMinutes = 0;
-    soc = settings.batteryInitialSoC;
-    cycleCount = 0;
-    revenue = 0;
-
-    fcrNToggled = false;
-    fcrDUpActive = false;
-    fcrDDownActive = false;
-    ffrActive = false;
-
-    frequency = settings.frequencyBase;
-    currentWind = settings.windBaselineMidpoint;
-    currentSunCondition = "Dark";
-    lastHourChecked = -1;
-    currentTemperature = 0;
-
-    currentDemandMW = settings.demandBaseMW;
-
-    // Gas
-    currentGasMW = settings.initialGasMW; // e.g. 59
-    targetGasMW = settings.initialGasMW;
-
-    windGenerationMW = 0;
-    pvGenerationMW = 0;
-
-    ffrEnergyDischarged = 0;
-    ffrRevenue = 0;
-
-    updateUI();
-    if (elements.lossMessage) elements.lossMessage.textContent = "";
-
-    startMainLoop();
-    logToConsole("Game started");
+  // If game is not active and not paused => we want to "Start"
+  if (!gameActive && !gamePaused) {
+    startGame();
+  }
+  // If game is active and not paused => we want to "Pause"
+  else if (gameActive && !gamePaused) {
+    pauseGame();
+  }
+  // If game is paused => "Resume"
+  else if (gamePaused) {
+    resumeGame();
   }
 };
 
-buttons.restartGame.onclick = () => {
-  gameActive = false;
-  clearInterval(mainLoop);
+buttons.stopGame.onclick = () => {
+  stopGame();
+};
 
+function resetGameState() {
   timeRemaining = settings.gameDurationSeconds;
   timeOfDayMinutes = 0;
   soc = settings.batteryInitialSoC;
@@ -890,20 +1014,65 @@ buttons.restartGame.onclick = () => {
   currentTemperature = 0;
 
   currentDemandMW = settings.demandBaseMW;
-  currentGasMW = settings.initialGasMW;
+
+  // Gas
+  currentGasMW = settings.initialGasMW; // e.g. 59
   targetGasMW = settings.initialGasMW;
 
   windGenerationMW = 0;
   pvGenerationMW = 0;
+
   ffrEnergyDischarged = 0;
   ffrRevenue = 0;
 
   updateUI();
   if (elements.lossMessage) elements.lossMessage.textContent = "";
+}
 
+// --------------------------------------
+// FUNCTIONS: START, PAUSE, RESUME, STOP
+// --------------------------------------
+
+function startGame() {
+  // reset everything
+  resetGameState();  
+
+  gameActive = true;
+  gamePaused = false;
+  
   startMainLoop();
+
+  logToConsole("Game started");
+  updateButtonStates();
+}
+
+function pauseGame() {
+  gamePaused = true;
+  clearInterval(mainLoop);
+
+  logToConsole("Game paused");
+  updateButtonStates();
+}
+
+function resumeGame() {
+  gamePaused = false;
+  startMainLoop();
+
+  logToConsole("Game resumed");
+  updateButtonStates();
+}
+
+function stopGame() {
+  gameActive = false;
+  gamePaused = false;
+  clearInterval(mainLoop);
+
+  // reset states 
+  resetGameState();
+  
   logToConsole("Game stopped");
-};
+  updateButtonStates();
+}
 
 /*****************************************************
  * TOGGLE HANDLERS
@@ -1073,7 +1242,7 @@ if (settingsButton) {
 /*****************************************************
  * INFO PANE ACCORDION
  *****************************************************/
-// This snippet toggles the "active" class on the parent .accordion-item
+// toggles the "active" class on the parent .accordion-item
 // so that CSS can show/hide .accordion-content
 const accordionButtons = document.querySelectorAll('.accordion-button');
 

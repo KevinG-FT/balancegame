@@ -8,7 +8,7 @@
   /* Body & Layout */
   body {
     font-family: 'Orbitron', 'Roboto', sans-serif;
-    background-color: #121212; /* Dark background for Xbox theme */
+    background-color: #121212; /* Dark background for theme */
     color: #FFFFFF; /* White text for contrast */
   }
   
@@ -18,7 +18,7 @@
     flex-direction: row;
     justify-content: flex-start; /* align items to the left */
     align-items: flex-start;
-    max-width: 1400px; /* Increased width for better layout */
+    max-width: 1400px; 
     margin: 0 auto;
     padding: 20px;
     gap: 20px;
@@ -31,7 +31,7 @@
     position: fixed;
     bottom: 5px;
     left: 20px;
-    background-color: #107C10; /* Xbox Green */
+    background-color: #107C10; /*  Green */
     border: none;
     padding: 12px 18px;
     font-size: 12px;
@@ -122,7 +122,7 @@
 
   
   .save-button {
-    background-color: #107C10; /* Xbox Green */
+    background-color: #107C10; /*  Green */
     color: #FFFFFF;
   }
   
@@ -152,7 +152,7 @@
   .game-container {
     flex: 1;
     background-color: #1C1C1C; /* Dark gray background */
-    border: 2px solid #107C10; /* Xbox Green border */
+    border: 2px solid #107C10; /*  Green border */
     border-radius: 10px;
     padding: 20px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.6);
@@ -170,7 +170,7 @@
   .header-title {
     font-size: 2rem;
     font-weight: bold;
-    color: #12ac12; /* Xbox Green */
+    color: #12ac12; /*  Green */
     margin-bottom: 6px;
   }
   
@@ -195,7 +195,7 @@
   .button {
     font-size: 1rem;
     padding: 8px 16px;
-    background-color: #107C10; /* Xbox Green */
+    background-color: #107C10; /*  Green */
     color: #FFFFFF;
     border: none;
     border-radius: 6px;
@@ -214,15 +214,40 @@
   }
 
   /* Buttons */
-  .restart-button {
+
+  .start-button {
     font-size: 1rem;
     padding: 8px 16px;
-    background-color: #B71C1C; /* Xbox Green */
+    background-color: #107C10; /* Example: blue color */
     color: #FFFFFF;
     border: none;
     border-radius: 6px;
     cursor: pointer;
     transition: background-color 0.3s ease, transform 0.2s ease;
+    display: inline-block;   
+    min-width: 92px;         
+    text-align: center;     
+  }
+
+  .start-button.pause-mode {
+    background-color: #E85B0C;
+    color: #FFFFFF;
+  }
+  .stop-button {
+    font-size: 1rem;
+    padding: 8px 16px;
+    background-color: #B71C1C; /* Green */
+    color: #FFFFFF;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+  }
+
+  .stop-button:disabled {
+    opacity: 0.5;        
+    cursor: not-allowed; 
+    background-color: #ccc; 
   }
   
   /* Environment stats */
@@ -236,7 +261,7 @@
   
   /* Each stat block */
   .environment-stats > div {
-    /* Use relative positioning so child elements can be absolutely placed */
+    /* relative positioning so child elements can be absolutely placed */
     position: relative;
     width: 140px;
     height: 65px; /* Fixed height to align items consistently */
@@ -250,7 +275,7 @@
   /* Label at the top */
   .environment-stats .generic-label {
     position: absolute;
-    top: 4px;  /* or whatever spacing you want */
+    top: 4px;  
     left: 0;
     right: 0;
     margin: 0;
@@ -263,7 +288,7 @@
   /* Data item pinned at the bottom */
   .environment-stats .data-item {
     position: absolute;
-    bottom: 4px; /* or whatever spacing you want */
+    bottom: 4px; 
     left: 0;
     right: 0;
   
@@ -361,7 +386,7 @@
     max-width: 800px;      /* Enough width for the battery + text to the right */
     height: 240px;         /* Enough height for the battery plus top/bottom space */
     margin: 0 auto;        /* Center this entire block in its parent */
-    /* You can add padding or a border if needed */
+    /* can add padding or a border if needed */
   }
   
   
@@ -373,7 +398,7 @@
     width: 60px;
     height: 200px;
     margin-top: 30px;
-    border: 3px solid #107C10; /* Xbox Green border */
+    border: 3px solid #107C10; /*  Green border */
     border-radius: 12px;
     background-color: #2c2c2c; /* Dark background for the container */
   }
@@ -382,7 +407,7 @@
 .battery-center {
     position: absolute;
     left: 50%;
-    top: 0; /* or 50% if you want it vertically centered as well */
+    top: 0; /* or 50% if we want it vertically centered as well */
     transform: translateX(-50%); /* shift left half its width */
     /* No set width here; .battery-container sets its own width. */
   }
@@ -439,7 +464,7 @@
   .battery-info .battery-specs div {
     margin-top: 5px;       /* small spacing above */
     font-size: small;     /* smaller text */
-    color: #CCCCCC;        /* lighter gray or whichever you prefer */
+    color: #CCCCCC;      
   }
   
 
@@ -517,7 +542,7 @@
   }
   
   input:checked + .slider {
-    background-color: #107C10; /* Xbox Green */
+    background-color: #107C10; /*  Green */
   }
   
   input:checked + .slider:before {
@@ -533,7 +558,7 @@
     height: 100%; /* fill entire viewport height */
     z-index: 2000; /* above main content but below the toggle button if needed */
     transition: top 0.5s ease; /* slides down in 0.5s */
-    font-family: 'Roboto', sans-serif; /* or whichever font you like */
+    font-family: 'Roboto', sans-serif; 
   }
   
   .intro-panel.active {
@@ -567,11 +592,11 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%); /* center the block in the middle */
-    width: 90%; /* or some fixed max-width like 600px if you want narrower text */
+    width: 90%; /* or some fixed max-width like 600px if we want narrower text */
     max-width: 850px;
     color: #FFFFFF;
-    text-align: left; /* or center if you prefer the screenshot style */
-    /* padding or margin as desired */
+    text-align: left; /* or center if we prefer the screenshot style */
+    /* padding or margin */
   }
 
   /* Headings, paragraphs, etc. */
@@ -601,13 +626,13 @@
     left: 5px;
     top: 0px;
     z-index: 10000;
-    background-color: #107C10; /* Xbox Green */
+    background-color: #107C10; /*  Green */
     color: #FFFFFF;
     border: none;
     border-radius: 6px;
     cursor: pointer;
-    font-size: 0.9em; /* per your request */
-    margin-top: 3px;  /* also as requested */
+    font-size: 0.9em; 
+    margin-top: 3px;  
     padding: 8px 12px;
   }
   
@@ -668,7 +693,7 @@
   
   .info-pane h2 {
     margin-bottom: 12px;
-    color: #12ac12; /* Xbox Green */
+    color: #12ac12; /*  Green */
     font-family: 'Audiowide', sans-serif;
   }
   
@@ -719,9 +744,6 @@
       justify-content: space-between;
     }
     
-    .info-pane {
-    /*  display: none; /* Hide info pane on smaller screens */
-    }
   }
   
   @media (max-width: 768px) {
