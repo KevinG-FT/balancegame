@@ -1,8 +1,6 @@
 /*****************************************************
  * GLOBAL VARIABLES & SETTINGS
  *****************************************************/
-
-
 let settings = null; // assign this in initializeGame()
 
 // Main game variables
@@ -15,10 +13,11 @@ let mainLoop = null;        // The setInterval handle for our main loop
 /*****************************************************
  * BATTERY CONSTANTS
  *****************************************************/
-const BATTERY_POWER_RATING_MW = 80;  // Maximum charge/discharge power
-const BATTERY_ENERGY_CAPACITY_MWH = 160;  // Total energy capacity
-const SINGLE_BATTERY_POWER_RATING_MW = 80;       // per battery unit
-const SINGLE_BATTERY_ENERGY_CAPACITY_MWH = 160;  // per battery unit
+let batteryCount = 1;
+const BATTERY_POWER_RATING_MW = 20;  // Maximum charge/discharge power
+const BATTERY_ENERGY_CAPACITY_MWH = 40;  // Total energy capacity
+const SINGLE_BATTERY_POWER_RATING_MW = 20;       // per battery unit
+const SINGLE_BATTERY_ENERGY_CAPACITY_MWH = 40;  // per battery unit
 // define a C-rate, or compute it
 const BATTERY_CRATE = 0.5; // or (BATTERY_POWER_RATING_MW / BATTERY_ENERGY_CAPACITY_MWH)
 
@@ -39,8 +38,8 @@ let windGenerationMW = 0;          // Current wind generation (MW)
 let pvGenerationMW = 0;            // Current solar generation (MW)
 let currentGasMW = 0;              // We'll assign after loading settings
 let targetGasMW = 0;               // Where we want gas to be in the near future
-let currentPVmw = 0;     // actual current PV output
-let targetPVmw = 0;      // desired or theoretical PV output
+let currentPVmw = 0;              // actual current PV output
+let targetPVmw = 0;               // desired or theoretical PV output
 
 // Frequency & Battery
 let frequency = 50.0;    // Current grid frequency (Hz)
@@ -123,8 +122,35 @@ const toggles = {
 const settingsButton = document.getElementById('settingsButton');
 const settingsPanel  = document.getElementById('settingsPanel');
 
+
 /*****************************************************
- * HELPER: LOG TO CONSOLE
+ * Initialize Game
+ *****************************************************/
+function initializeGame() {
+  loadSettingsFromLocalStorage();
+  updateDerivedSettings();
+  updateUI();
+  updateBatteryStats();
+  updateBatteryButtons();
+  logToConsole("Game initialized with MW-based settings");
+}
+
+window.onload = () => {
+  initializeGame();
+  openIntroPanel();
+  updateButtonStates(); // ensures Start is enabled, Stop is disabled
+
+  const powerRatingEl = document.getElementById('batteryPowerRating');
+  const capacityEl    = document.getElementById('batteryEnergyCapacity');
+  const cRateEl       = document.getElementById('batteryCRate');
+
+  powerRatingEl.textContent   = `Power Rating: ${BATTERY_POWER_RATING_MW} MW`;
+  capacityEl.textContent      = `Energy Capacity: ${BATTERY_ENERGY_CAPACITY_MWH} MWh`;
+  cRateEl.textContent         = `C-rate: ${BATTERY_CRATE.toFixed(2)}`;
+};
+
+/*****************************************************
+ * HELPER: Log to Console
  *****************************************************/
 function logToConsole(msg) {
   // In-game console
@@ -139,7 +165,7 @@ function logToConsole(msg) {
 }
 
 /*****************************************************
- * HELPER: FORMAT TIME
+ * HELPER: Format Time
  *****************************************************/
 function formatTime(tMinutes) {
   const hours = Math.floor(tMinutes / 60) % 24;
@@ -166,7 +192,7 @@ function getDefaultSettings() {
     windSpeedMin: 0,
 
     // =============== CAPACITIES & INITIAL GAS =================
-    pvGenerationMaxMW: 30,
+    pvGenerationMaxMW: 50,
     windGenerationMaxMW: 80,
     gasGenerationMaxMW: 100,
     initialGasMW: 59,
@@ -236,31 +262,9 @@ function getDefaultSettings() {
 }
 
 function loadSettingsFromLocalStorage() {
-  settings = getDefaultSettings(); // always default
+  settings = getDefaultSettings(); // stubbed out for now
 }
 
-function initializeGame() {
-  loadSettingsFromLocalStorage();
-  updateDerivedSettings();
-  updateUI();
-  updateBatteryStats();
-  updateBatteryButtons();
-  logToConsole("Game initialized with MW-based settings");
-}
-
-window.onload = () => {
-  initializeGame();
-  openIntroPanel();
-  updateButtonStates(); // ensures Start is enabled, Stop is disabled
-
-  const powerRatingEl = document.getElementById('batteryPowerRating');
-  const capacityEl    = document.getElementById('batteryEnergyCapacity');
-  const cRateEl       = document.getElementById('batteryCRate');
-
-  powerRatingEl.textContent   = `Power Rating: ${BATTERY_POWER_RATING_MW} MW`;
-  capacityEl.textContent      = `Energy Capacity: ${BATTERY_ENERGY_CAPACITY_MWH} MWh`;
-  cRateEl.textContent         = `C-rate: ${BATTERY_CRATE.toFixed(2)}`;
-};
 
 /*****************************************************
  * DERIVED SETTINGS / PANEL SAVE (STUBS)
@@ -281,7 +285,38 @@ function resetSettings() {
 }
 
 /*****************************************************
- * ENVIRONMENT CALCULATIONS (NOW IN MW)
+ * SETTINGS PANEL 
+ *****************************************************/
+
+/**
+ * Open the settings panel
+ */
+function openSettingsPanel() {
+  settingsPanel.classList.add('active');
+}
+
+/**
+ * Close the settings panel
+ */
+function closeSettingsPanel() {
+  settingsPanel.classList.remove('active');
+}
+
+// Toggle on button click
+if (settingsButton) {
+  settingsButton.addEventListener('click', () => {
+    if (settingsPanel.classList.contains('active')) {
+      closeSettingsPanel();
+    } else {
+      openSettingsPanel();
+      // TBD: Call loadSettingsToPanel() here to refresh fields
+      // loadSettingsToPanel();
+    }
+  });
+}
+
+/*****************************************************
+ * ENVIRONMENT CALCULATIONS (IN MW)
  *****************************************************/
 
 /**
@@ -399,7 +434,9 @@ function applyPVRamp(dt) {
     }
   }
 
-/** updateEnvironment */
+// --------------------------------------
+// UPDATE ENVIRONMENT
+// --------------------------------------
 function updateEnvironment(tMinutes, dt=1) {
 
     // Update environment elements
@@ -463,10 +500,133 @@ function updateEnvironment(tMinutes, dt=1) {
   }
 
   logToConsole(
-    `Environment => Time=${formatTime(tMinutes)}, Temp=${currentTemperature.toFixed(
-      1
-    )}°C, Wind=${currentWind.toFixed(1)} m/s, Sun=${currentSunCondition}`
-  );
+    `Environment => Time=${formatTime(tMinutes)}, Temp=${currentTemperature.toFixed(1)}°C, Wind=${currentWind.toFixed(1)} m/s, Sun=${currentSunCondition}`);
+}
+
+// --------------------------------------
+// ADDING / REMOVING BATTERIES
+// --------------------------------------
+// We'll compute the total from however many units we have
+
+let totalBatteryPowerRatingMW = SINGLE_BATTERY_POWER_RATING_MW * batteryCount;
+let totalBatteryEnergyCapacityMWh = SINGLE_BATTERY_ENERGY_CAPACITY_MWH * batteryCount;
+// If you want to store cycles, SoC, etc., do so here as well
+
+// DOM references
+const batteryCenter = document.getElementById('batteryCenter');
+const addBatteryBtn = document.getElementById('addBattery');
+const removeBatteryBtn = document.getElementById('removeBattery');
+
+
+
+/*****************************************************
+ * Battery add / remove event listeners
+ *****************************************************/
+// Add a battery (up to some max, e.g. 5)
+const maxBatteries = 8;
+
+addBatteryBtn.addEventListener('click', () => {
+  if (batteryCount < maxBatteries) {
+    batteryCount++;
+
+    // Create the container
+    const newBatteryContainer = document.createElement('div');
+    newBatteryContainer.classList.add('battery-container');
+    newBatteryContainer.id = 'batteryContainer' + batteryCount;
+
+    // Create the SoC element
+    const newBatterySoc = document.createElement('div');
+    newBatterySoc.classList.add('battery-soc', 'xbox-theme');
+    newBatterySoc.id = 'batterySoc' + batteryCount;
+
+    // Copy SoC height from the first battery (or set your own default)
+    const firstBatterySoc = document.getElementById('batterySoc1');
+    newBatterySoc.style.height = firstBatterySoc.style.height || '50%';
+
+    // Add the critical lines
+    const lowLine = document.createElement('div');
+    lowLine.classList.add('critical-line', 'low');
+    const highLine = document.createElement('div');
+    highLine.classList.add('critical-line', 'high');
+
+    // Assemble it
+    newBatteryContainer.appendChild(newBatterySoc);
+    newBatteryContainer.appendChild(lowLine);
+    newBatteryContainer.appendChild(highLine);
+    batteryCenter.appendChild(newBatteryContainer);
+
+    // Update stats and button states
+    updateBatteryStats();
+    updateBatteryButtons();
+  }
+});
+
+// Remove a battery (down to 1 minimum)
+removeBatteryBtn.addEventListener('click', () => {
+  if (batteryCount > 1) {
+    const lastBattery = document.getElementById('batteryContainer' + batteryCount);
+    if (lastBattery) {
+      batteryCenter.removeChild(lastBattery);
+      batteryCount--;
+    }
+    // Update stats and button states
+    updateBatteryStats();
+    updateBatteryButtons();
+  }
+});
+
+
+/*****************************************************
+ * Battery functions
+ *****************************************************/
+// Recalculate total battery stats and update HTML
+function updateBatteryStats() {
+  // Adjust total capacity/power based on how many battery units we have
+  totalBatteryPowerRatingMW = SINGLE_BATTERY_POWER_RATING_MW * batteryCount;
+  totalBatteryEnergyCapacityMWh = SINGLE_BATTERY_ENERGY_CAPACITY_MWH * batteryCount;
+  
+  // Example: Calculate C-Rate (Power / Capacity)
+  const cRate = totalBatteryPowerRatingMW / totalBatteryEnergyCapacityMWh;
+
+  // Update DOM
+  const batteryPowerRatingEl = document.getElementById('batteryPowerRating');
+  const batteryEnergyCapacityEl = document.getElementById('batteryEnergyCapacity');
+  const batteryCRateEl = document.getElementById('batteryCRate');
+
+  batteryPowerRatingEl.textContent = `Power Rating: ${totalBatteryPowerRatingMW} MW`;
+  batteryEnergyCapacityEl.textContent = `Energy Capacity: ${totalBatteryEnergyCapacityMWh} MWh`;
+  batteryCRateEl.textContent = `C-Rate: ${cRate.toFixed(2)} c`;
+}
+
+// Enable/disable add/remove buttons according to current batteryCount
+function updateBatteryButtons() {
+  removeBatteryBtn.disabled = (batteryCount <= 1);
+  addBatteryBtn.disabled = (batteryCount >= maxBatteries);
+}
+
+// set SoC for ALL units 
+function setAllBatterySoC(socValue) {
+  const batterySocs = document.querySelectorAll('.battery-soc');
+  batterySocs.forEach((socEl) => {
+    socEl.style.height = socValue + '%';
+  });
+  logToConsole(`All batteries set to ${socValue}% SoC`);
+}
+
+function updateBatteryColorClasses(socValue) {
+  const batterySocs = document.querySelectorAll('.battery-soc');
+  batterySocs.forEach((socEl) => {
+    // Remove all possible SoC color classes first
+    socEl.classList.remove('low', 'high');
+
+    // For example, consider < 20% as low, > 90% as high
+    if (socValue < 20) {
+      socEl.classList.add('low');   // .battery-soc.low { background: #B71C1C; }
+    } else if (socValue > 90) {
+      socEl.classList.add('high');  // .battery-soc.high { background: #FFC107; }
+    } 
+    // else remain normal (the "xbox-theme" green).
+  });
 }
 
 /*****************************************************
@@ -502,7 +662,7 @@ function updatePrices(tMinutes) {
 }
 
 /*****************************************************
- * FREQUENCY MANAGEMENT
+ * FREQUENCY MANAGEMENT - updateFrequency()
  *****************************************************/
 function updateFrequency() {
   const netImbalanceMW = currentGenerationMW - currentDemandMW;
@@ -515,7 +675,7 @@ function updateFrequency() {
   const clamped = Math.max(-0.5, Math.min(0.5, freqChange));
   frequency += clamped;
 
-  // random noise for gameplay
+  // random noise for simulated conditions / gameplay
   frequency += (Math.random() - 0.5) * settings.frequencyNoiseRange;
 
   if (elements.frequencyArrow) {
@@ -564,12 +724,12 @@ function updateFCRN() {
   soc = Math.max(0, Math.min(100, soc + powerCommandMW * settings.fcrNSoCChangePerMW));
 
   // freq feedback
-  frequency -= powerCommandMW * 0.02;
+  frequency -= powerCommandMW * 0.02 * batteryCount;
 
   // revenue
-  revenue += Math.abs(powerCommandMW) * settings.fcrNRevenuePerMW;
+  revenue += Math.abs(powerCommandMW) * settings.fcrNRevenuePerMW * batteryCount;
   // cycles
-  cycleCount += Math.abs(powerCommandMW) * 0.1;
+  cycleCount += Math.abs(powerCommandMW) * 0.2;
 
   logToConsole(
     `FCR-N => cmd=${powerCommandMW.toFixed(2)} MW, SoC=${soc.toFixed(1)}%, freq=${frequency.toFixed(2)}`
@@ -577,7 +737,7 @@ function updateFCRN() {
 }
 
 /*****************************************************
- * FCR-D Up & Down
+ * FCR-D Up 
  *****************************************************/
 function updateFCRDUp(deltaTime) {
   if (!fcrDUpActive) {
@@ -594,6 +754,7 @@ function updateFCRDUp(deltaTime) {
   }
 
   fcrDUpTimer += deltaTime;
+
   if (fcrDUpTimer >= settings.fcrDRampTimeFull) {
     if (fcrDUpState !== FCRD_UP_STATE.FULL) {
       fcrDUpState = FCRD_UP_STATE.FULL;
@@ -605,21 +766,22 @@ function updateFCRDUp(deltaTime) {
       logToConsole("FCR-D Up partially activated");
     }
   } else if (fcrDUpState === FCRD_UP_STATE.INACTIVE) {
-    fcrDUpState = FCRD_UP_STATE.PARTIAL;
-    logToConsole("FCR-D Up ramping");
+      fcrDUpState = FCRD_UP_STATE.PARTIAL;
+      logToConsole("FCR-D Up ramping");
   }
 
   let freqImpact = 0, socImpact = 0, revImpact = 0, cycleImpact = 0;
+
   if (fcrDUpState === FCRD_UP_STATE.PARTIAL) {
-    freqImpact = settings.fcrDFrequencyImpactPartial * deltaTime;
-    socImpact = settings.fcrDSoCImpactPartial * deltaTime;
-    revImpact = settings.fcrDRevenuePerSecPartial * deltaTime;
-    cycleImpact = 0.05 * deltaTime;
+      freqImpact = settings.fcrDFrequencyImpactPartial * deltaTime * batteryCount;
+      socImpact = settings.fcrDSoCImpactPartial * deltaTime;
+      revImpact = settings.fcrDRevenuePerSecPartial * deltaTime * batteryCount;
+      cycleImpact = 0.05 * deltaTime;
   } else if (fcrDUpState === FCRD_UP_STATE.FULL) {
-    freqImpact = settings.fcrDFrequencyImpactFull * deltaTime;
-    socImpact = settings.fcrDSoCImpactFull * deltaTime;
-    revImpact = settings.fcrDRevenuePerSecFull * deltaTime;
-    cycleImpact = 0.1 * deltaTime;
+      freqImpact = settings.fcrDFrequencyImpactFull * deltaTime * batteryCount;
+      socImpact = settings.fcrDSoCImpactFull * deltaTime;
+      revImpact = settings.fcrDRevenuePerSecFull * deltaTime * batteryCount;
+      cycleImpact = 0.1 * deltaTime;
   }
 
   frequency += freqImpact;
@@ -628,11 +790,12 @@ function updateFCRDUp(deltaTime) {
   cycleCount += cycleImpact;
 
   logToConsole(
-    `FCR-D Up: ${fcrDUpState}, dFreq=${freqImpact.toFixed(3)}, dSoC=${socImpact.toFixed(
-      1
-    )}%, dRev=€${revImpact.toFixed(2)}`
-  );
+    `FCR-D Up: ${fcrDUpState}, dFreq=${freqImpact.toFixed(3)}, dSoC=${socImpact.toFixed(1)}%, dRev=€${revImpact.toFixed(2)}`);
 }
+
+/*****************************************************
+ * FCR-D Down 
+ *****************************************************/
 
 function updateFCRDDown(deltaTime) {
   if (!fcrDDownActive) {
@@ -668,16 +831,17 @@ function updateFCRDDown(deltaTime) {
     socImpact = 0,
     revImpact = 0,
     cycleImpact = 0;
+
   if (fcrDDownState === FCRD_DOWN_STATE.PARTIAL) {
-    freqImpact = settings.fcrDFrequencyImpactPartial * deltaTime;
-    socImpact = settings.fcrDSoCImpactPartial * deltaTime;
-    revImpact = settings.fcrDRevenuePerSecPartial * deltaTime;
-    cycleImpact = 0.05 * deltaTime;
+      freqImpact = settings.fcrDFrequencyImpactPartial * deltaTime * batteryCount;
+      socImpact = settings.fcrDSoCImpactPartial * deltaTime;
+      revImpact = settings.fcrDRevenuePerSecPartial * deltaTime * batteryCount;
+      cycleImpact = 0.05 * deltaTime;
   } else if (fcrDDownState === FCRD_DOWN_STATE.FULL) {
-    freqImpact = settings.fcrDFrequencyImpactFull * deltaTime;
-    socImpact = settings.fcrDSoCImpactFull * deltaTime;
-    revImpact = settings.fcrDRevenuePerSecFull * deltaTime;
-    cycleImpact = 0.1 * deltaTime;
+      freqImpact = settings.fcrDFrequencyImpactFull * deltaTime * batteryCount;
+      socImpact = settings.fcrDSoCImpactFull * deltaTime;
+      revImpact = settings.fcrDRevenuePerSecFull * deltaTime * batteryCount;
+      cycleImpact = 0.1 * deltaTime;
   }
 
   frequency += freqImpact;
@@ -686,10 +850,7 @@ function updateFCRDDown(deltaTime) {
   cycleCount += cycleImpact;
 
   logToConsole(
-    `FCR-D Down: ${fcrDDownState}, dFreq=${freqImpact.toFixed(3)}, dSoC=${socImpact.toFixed(
-      1
-    )}%, dRev=€${revImpact.toFixed(2)}`
-  );
+    `FCR-D Down: ${fcrDDownState}, dFreq=${freqImpact.toFixed(3)}, dSoC=${socImpact.toFixed(1)}%, dRev=€${revImpact.toFixed(2)}`);
 }
 
 /*****************************************************
@@ -814,6 +975,218 @@ function updateFFR(deltaTimeSec) {
 
 }
 
+
+/*****************************************************
+ * MARKET TOGGLE HANDLERS
+ *****************************************************/
+toggles.fcrNToggle.onchange = () => {
+  toggleFcrN(toggles.fcrNToggle.checked);
+};
+function toggleFcrN(state) {
+  fcrNToggled = state;
+  if (state) {
+    logToConsole("FCR-N activated");
+  } else {
+    logToConsole("FCR-N deactivated");
+  }
+}
+
+toggles.fcrDUpToggle.onchange = () => {
+  activateFcrDUp(toggles.fcrDUpToggle.checked);
+};
+function activateFcrDUp(state) {
+  fcrDUpActive = state;
+  if (fcrDUpActive) {
+    logToConsole("FCR-D Up activated");
+    if (fcrNToggled) {
+      toggleFcrN(false);
+      fcrNWasForcedOff = true;
+      logToConsole("FCR-N forced off due to FCR-D Up activation");
+    }
+  } else {
+    logToConsole("FCR-D Up deactivated");
+    if (
+      fcrNWasForcedOff &&
+      soc >= settings.fcrNSoCMin &&
+      soc <= settings.fcrNSoCMax &&
+      frequency >= settings.fcrNFrequencyRange.min &&
+      frequency <= settings.fcrNFrequencyRange.max
+    ) {
+      toggleFcrN(true);
+      fcrNWasForcedOff = false;
+      logToConsole("FCR-N reactivated after FCR-D Up deactivation");
+    }
+  }
+}
+
+toggles.fcrDDownToggle.onchange = () => {
+  activateFcrDDown(toggles.fcrDDownToggle.checked);
+};
+function activateFcrDDown(state) {
+  fcrDDownActive = state;
+  if (fcrDDownActive) {
+    logToConsole("FCR-D Down activated");
+    if (fcrNToggled) {
+      toggleFcrN(false);
+      fcrNWasForcedOff = true;
+      logToConsole("FCR-N forced off due to FCR-D Down activation");
+    }
+  } else {
+    logToConsole("FCR-D Down deactivated");
+    if (
+      fcrNWasForcedOff &&
+      soc >= settings.fcrNSoCMin &&
+      soc <= settings.fcrNSoCMax &&
+      frequency >= settings.fcrNFrequencyRange.min &&
+      frequency <= settings.fcrNFrequencyRange.max
+    ) {
+      toggleFcrN(true);
+      fcrNWasForcedOff = false;
+      logToConsole("FCR-N reactivated after FCR-D Down deactivation");
+    }
+  }
+}
+
+toggles.ffrToggle.onchange = () => {
+  ffrActive = toggles.ffrToggle.checked;
+  if (ffrActive) {
+    logToConsole("FFR activated");
+  } else {
+    logToConsole("FFR deactivated");
+  }
+};
+
+/*****************************************************
+ * CHARGE BATTERY
+ *****************************************************/
+buttons.charge.onclick = () => {
+    if (soc >= settings.batteryMaxSoC) {
+      logToConsole("Battery is already fully charged");
+      return;
+    }
+    // Use the BATTERY_POWER_RATING_MW constant
+    const power = BATTERY_POWER_RATING_MW;  
+    const chargeEnergyMWh = power * (settings.uiUpdateIntervalMs / 3600000);
+    const cost = settings.batteryCostPerMWh * chargeEnergyMWh;
+  
+    // SoC changes: TBD: Refine this logic depending on how we 
+    // want SoC (%) to correlate with total MWh capacity.
+    soc = Math.min(
+      settings.batteryMaxSoC,
+      soc + settings.batterySoCChangePerChargeMWh
+    );
+  
+    revenue -= cost * batteryCount;
+    cycleCount += 0.1;
+  
+    frequency = Math.max(48, Math.min(52, frequency - (0.01 * batteryCount)));
+  
+    updateUI();
+    logToConsole(`Battery charged: -€${cost.toFixed(4)}, SoC=${soc.toFixed(1)}%`);
+  };
+
+/*****************************************************
+ * DISCHARGE BATTERY
+ *****************************************************/
+
+  buttons.discharge.onclick = () => {
+    if (soc <= settings.batteryMinSoC) {
+      logToConsole("Battery is already fully discharged");
+      return;
+    }
+    const power = BATTERY_POWER_RATING_MW; 
+    const dischargeEnergyMWh = power * (settings.uiUpdateIntervalMs / 3600000);
+    const income = settings.batteryIncomePerMWh * dischargeEnergyMWh;
+  
+    soc = Math.max(
+      settings.batteryMinSoC,
+      soc - settings.batterySoCChangePerDischargeMWh
+    );
+  
+    revenue += income * batteryCount;
+    cycleCount += 0.1;
+  
+    frequency = Math.max(48, Math.min(52, frequency + (0.01 * batteryCount)));
+  
+    updateUI();
+    logToConsole(`Battery discharged: +€${income.toFixed(4)}, SoC=${soc.toFixed(1)}%`);
+  };
+  
+
+/*****************************************************
+ * INFO PANE ACCORDION
+ *****************************************************/
+// toggles the "active" class on the parent .accordion-item
+// so that CSS can show/hide .accordion-content
+const accordionButtons = document.querySelectorAll('.accordion-button');
+
+accordionButtons.forEach((btn) => {
+  btn.addEventListener('click', () => {
+    // The parent .accordion-item
+    const accordionItem = btn.closest('.accordion-item');
+    if (!accordionItem) return;
+
+    // Toggle 'active' class
+    accordionItem.classList.toggle('active');
+  });
+});
+
+/*****************************************************
+ * INTRO PANEL FUNCTIONALITY
+ *****************************************************/
+
+// Grab references to the Intro Panel and Toggle Button by their IDs
+const introPanel = document.getElementById('introPanel');
+const introToggleButton = document.getElementById('introToggleButton');
+
+function openIntroPanel() {
+    introPanel.classList.add('active');
+    introToggleButton.classList.add('close-mode');
+    introToggleButton.textContent = "✕";
+  }
+  function closeIntroPanel() {
+    introPanel.classList.remove('active');
+    introToggleButton.classList.remove('close-mode');
+    introToggleButton.textContent = "About the Game";
+  }
+
+if (introToggleButton) {
+  introToggleButton.addEventListener('click', () => {
+    if (introPanel.classList.contains('active')) {
+      closeIntroPanel();
+    } else {
+      openIntroPanel();
+    }
+  });
+}
+
+/*****************************************************
+ * INTRO PANEL FUNCTIONALITY
+ *****************************************************/
+
+// Grab references to the Intro Panel and Toggle Button by their IDs
+const InfoPane = document.getElementById('infoPane');
+const InfoToggleButton = document.getElementById('infoToggleButton');
+
+function openInfoPane() {
+    InfoPane.classList.add('active');
+    InfoToggleButton.classList.add('close-mode');
+    InfoToggleButton.textContent = "✕";
+  }
+  function closeInfoPane() {
+    InfoPane.classList.remove('active');
+    InfoToggleButton.classList.remove('close-mode');
+    InfoToggleButton.textContent = "Market Info";
+  }
+
+if (InfoToggleButton) {
+  InfoToggleButton.addEventListener('click', () => {
+    InfoPane.classList.contains('active') ? closeInfoPane() : openInfoPane();
+    
+  });
+}
+
+
 /*****************************************************
  * MAIN GAME LOOP
  *****************************************************/
@@ -917,7 +1290,7 @@ function updateUI() {
 
 function checkGameOver() {
   const freqOutOfRange = frequency < settings.frequencyClamp.min || frequency > settings.frequencyClamp.max;
-  const socOutOfRange = soc < 0 || soc > 100;
+  const socOutOfRange = soc < 10 || soc > 90;
   const tooManyCycles = cycleCount > 30;
 
   if (freqOutOfRange || socOutOfRange || tooManyCycles) {
@@ -925,6 +1298,8 @@ function checkGameOver() {
     if (freqOutOfRange) {
       if (elements.lossMessage) elements.lossMessage.textContent = "You failed! Frequency out of bounds.";
       logToConsole("Game Over: Frequency out of bounds");
+      // TBD: log frequency deviations here
+
     } else if (socOutOfRange) {
       if (elements.lossMessage) elements.lossMessage.textContent = "You failed! Battery SoC out of bounds.";
       logToConsole("Game Over: Battery SoC out of bounds");
@@ -951,7 +1326,7 @@ function checkGameOver() {
 }
 
 /*****************************************************
- * BUTTON HANDLERS
+ * GAME CONTROL BUTTON HANDLERS
  *****************************************************/
 // --------------------------------------
 // HELPER: updateButtonStates()
@@ -984,7 +1359,6 @@ function updateButtonStates() {
     buttons.stopGame.disabled = false;
   }
 }
-
 
 buttons.startGame.onclick = () => {
   // If game is not active and not paused => we want to "Start"
@@ -1040,7 +1414,7 @@ function resetGameState() {
 }
 
 // --------------------------------------
-// FUNCTIONS: START, PAUSE, RESUME, STOP
+// START, PAUSE, RESUME, STOP
 // --------------------------------------
 
 function startGame() {
@@ -1082,368 +1456,4 @@ function stopGame() {
   
   logToConsole("Game stopped");
   updateButtonStates();
-}
-
-// --------------------------------------
-// ADDING / REMOVING BATTERIES
-// --------------------------------------
-// We'll compute the total from however many units we have
-let batteryCount = 1;
-let totalBatteryPowerRatingMW = SINGLE_BATTERY_POWER_RATING_MW * batteryCount;
-let totalBatteryEnergyCapacityMWh = SINGLE_BATTERY_ENERGY_CAPACITY_MWH * batteryCount;
-// If you want to store cycles, SoC, etc., do so here as well
-
-// DOM references
-const batteryCenter = document.getElementById('batteryCenter');
-const addBatteryBtn = document.getElementById('addBattery');
-const removeBatteryBtn = document.getElementById('removeBattery');
-
-
-
-/*****************************************************
- * EVENT LISTENERS FOR BATTERY ADD/REMOVE
- *****************************************************/
-// Add a battery (up to some max, e.g. 5)
-const maxBatteries = 5;
-
-addBatteryBtn.addEventListener('click', () => {
-  if (batteryCount < maxBatteries) {
-    batteryCount++;
-
-    // Create the container
-    const newBatteryContainer = document.createElement('div');
-    newBatteryContainer.classList.add('battery-container');
-    newBatteryContainer.id = 'batteryContainer' + batteryCount;
-
-    // Create the SoC element
-    const newBatterySoc = document.createElement('div');
-    newBatterySoc.classList.add('battery-soc', 'xbox-theme');
-    newBatterySoc.id = 'batterySoc' + batteryCount;
-
-    // Copy SoC height from the first battery (or set your own default)
-    const firstBatterySoc = document.getElementById('batterySoc1');
-    newBatterySoc.style.height = firstBatterySoc.style.height || '50%';
-
-    // Add the critical lines
-    const lowLine = document.createElement('div');
-    lowLine.classList.add('critical-line', 'low');
-    const highLine = document.createElement('div');
-    highLine.classList.add('critical-line', 'high');
-
-    // Assemble it
-    newBatteryContainer.appendChild(newBatterySoc);
-    newBatteryContainer.appendChild(lowLine);
-    newBatteryContainer.appendChild(highLine);
-    batteryCenter.appendChild(newBatteryContainer);
-
-    // Update stats and button states
-    updateBatteryStats();
-    updateBatteryButtons();
-  }
-});
-
-// Remove a battery (down to 1 minimum)
-removeBatteryBtn.addEventListener('click', () => {
-  if (batteryCount > 1) {
-    const lastBattery = document.getElementById('batteryContainer' + batteryCount);
-    if (lastBattery) {
-      batteryCenter.removeChild(lastBattery);
-      batteryCount--;
-    }
-    // Update stats and button states
-    updateBatteryStats();
-    updateBatteryButtons();
-  }
-});
-
-
-/*****************************************************
- * FUNCTIONS
- *****************************************************/
-// Recalculate total battery stats and update HTML
-function updateBatteryStats() {
-  // Adjust total capacity/power based on how many battery units we have
-  totalBatteryPowerRatingMW = SINGLE_BATTERY_POWER_RATING_MW * batteryCount;
-  totalBatteryEnergyCapacityMWh = SINGLE_BATTERY_ENERGY_CAPACITY_MWH * batteryCount;
-  
-  // Example: Calculate C-Rate (Power / Capacity)
-  const cRate = totalBatteryPowerRatingMW / totalBatteryEnergyCapacityMWh;
-
-  // Update DOM
-  const batteryPowerRatingEl = document.getElementById('batteryPowerRating');
-  const batteryEnergyCapacityEl = document.getElementById('batteryEnergyCapacity');
-  const batteryCRateEl = document.getElementById('batteryCRate');
-
-  batteryPowerRatingEl.textContent = `Power Rating: ${totalBatteryPowerRatingMW} MW`;
-  batteryEnergyCapacityEl.textContent = `Energy Capacity: ${totalBatteryEnergyCapacityMWh} MWh`;
-  batteryCRateEl.textContent = `C-Rate: ${cRate.toFixed(2)} c`;
-}
-
-// Enable/disable add/remove buttons according to current batteryCount
-function updateBatteryButtons() {
-  removeBatteryBtn.disabled = (batteryCount <= 1);
-  addBatteryBtn.disabled = (batteryCount >= maxBatteries);
-}
-
-// set SoC for ALL units 
-function setAllBatterySoC(socValue) {
-  const batterySocs = document.querySelectorAll('.battery-soc');
-  batterySocs.forEach((socEl) => {
-    socEl.style.height = socValue + '%';
-  });
-  logToConsole(`All batteries set to ${socValue}% SoC`);
-}
-
-function updateBatteryColorClasses(socValue) {
-  const batterySocs = document.querySelectorAll('.battery-soc');
-  batterySocs.forEach((socEl) => {
-    // Remove all possible SoC color classes first
-    socEl.classList.remove('low', 'high');
-
-    // For example, consider < 20% as low, > 90% as high
-    if (socValue < 20) {
-      socEl.classList.add('low');   // .battery-soc.low { background: #B71C1C; }
-    } else if (socValue > 90) {
-      socEl.classList.add('high');  // .battery-soc.high { background: #FFC107; }
-    } 
-    // else remain normal (the "xbox-theme" green).
-  });
-}
-
-/*****************************************************
- * TOGGLE HANDLERS
- *****************************************************/
-toggles.fcrNToggle.onchange = () => {
-  toggleFcrN(toggles.fcrNToggle.checked);
-};
-function toggleFcrN(state) {
-  fcrNToggled = state;
-  if (state) {
-    logToConsole("FCR-N activated");
-  } else {
-    logToConsole("FCR-N deactivated");
-  }
-}
-
-toggles.fcrDUpToggle.onchange = () => {
-  activateFcrDUp(toggles.fcrDUpToggle.checked);
-};
-function activateFcrDUp(state) {
-  fcrDUpActive = state;
-  if (fcrDUpActive) {
-    logToConsole("FCR-D Up activated");
-    if (fcrNToggled) {
-      toggleFcrN(false);
-      fcrNWasForcedOff = true;
-      logToConsole("FCR-N forced off due to FCR-D Up activation");
-    }
-  } else {
-    logToConsole("FCR-D Up deactivated");
-    if (
-      fcrNWasForcedOff &&
-      soc >= settings.fcrNSoCMin &&
-      soc <= settings.fcrNSoCMax &&
-      frequency >= settings.fcrNFrequencyRange.min &&
-      frequency <= settings.fcrNFrequencyRange.max
-    ) {
-      toggleFcrN(true);
-      fcrNWasForcedOff = false;
-      logToConsole("FCR-N reactivated after FCR-D Up deactivation");
-    }
-  }
-}
-
-toggles.fcrDDownToggle.onchange = () => {
-  activateFcrDDown(toggles.fcrDDownToggle.checked);
-};
-function activateFcrDDown(state) {
-  fcrDDownActive = state;
-  if (fcrDDownActive) {
-    logToConsole("FCR-D Down activated");
-    if (fcrNToggled) {
-      toggleFcrN(false);
-      fcrNWasForcedOff = true;
-      logToConsole("FCR-N forced off due to FCR-D Down activation");
-    }
-  } else {
-    logToConsole("FCR-D Down deactivated");
-    if (
-      fcrNWasForcedOff &&
-      soc >= settings.fcrNSoCMin &&
-      soc <= settings.fcrNSoCMax &&
-      frequency >= settings.fcrNFrequencyRange.min &&
-      frequency <= settings.fcrNFrequencyRange.max
-    ) {
-      toggleFcrN(true);
-      fcrNWasForcedOff = false;
-      logToConsole("FCR-N reactivated after FCR-D Down deactivation");
-    }
-  }
-}
-
-toggles.ffrToggle.onchange = () => {
-  ffrActive = toggles.ffrToggle.checked;
-  if (ffrActive) {
-    logToConsole("FFR activated");
-  } else {
-    logToConsole("FFR deactivated");
-  }
-};
-
-/*****************************************************
- * BATTERY ACTIONS
- *****************************************************/
-buttons.charge.onclick = () => {
-    if (soc >= settings.batteryMaxSoC) {
-      logToConsole("Battery is already fully charged");
-      return;
-    }
-    // Use the BATTERY_POWER_RATING_MW constant
-    const power = BATTERY_POWER_RATING_MW;  
-    const chargeEnergyMWh = power * (settings.uiUpdateIntervalMs / 3600000);
-    const cost = settings.batteryCostPerMWh * chargeEnergyMWh;
-  
-    // SoC changes: TBD: Refine this logic depending on how we 
-    // want SoC (%) to correlate with total MWh capacity.
-    soc = Math.min(
-      settings.batteryMaxSoC,
-      soc + settings.batterySoCChangePerChargeMWh
-    );
-  
-    revenue -= cost;
-    cycleCount += 0.1;
-  
-    frequency = Math.max(48, Math.min(52, frequency - 0.01));
-  
-    updateUI();
-    logToConsole(`Battery charged: -€${cost.toFixed(4)}, SoC=${soc.toFixed(1)}%`);
-  };
-
-  buttons.discharge.onclick = () => {
-    if (soc <= settings.batteryMinSoC) {
-      logToConsole("Battery is already fully discharged");
-      return;
-    }
-    const power = BATTERY_POWER_RATING_MW; 
-    const dischargeEnergyMWh = power * (settings.uiUpdateIntervalMs / 3600000);
-    const income = settings.batteryIncomePerMWh * dischargeEnergyMWh;
-  
-    soc = Math.max(
-      settings.batteryMinSoC,
-      soc - settings.batterySoCChangePerDischargeMWh
-    );
-  
-    revenue += income;
-    cycleCount += 0.1;
-  
-    frequency = Math.max(48, Math.min(52, frequency + 0.01));
-  
-    updateUI();
-    logToConsole(`Battery discharged: +€${income.toFixed(4)}, SoC=${soc.toFixed(1)}%`);
-  };
-  
-
-/*****************************************************
- * SETTINGS PANEL
- *****************************************************/
-
-
-/**
- * Open the settings panel.
- */
-function openSettingsPanel() {
-  settingsPanel.classList.add('active');
-}
-
-/**
- * Close the settings panel.
- */
-function closeSettingsPanel() {
-  settingsPanel.classList.remove('active');
-}
-
-// Toggle on button click
-if (settingsButton) {
-  settingsButton.addEventListener('click', () => {
-    if (settingsPanel.classList.contains('active')) {
-      closeSettingsPanel();
-    } else {
-      openSettingsPanel();
-      // You might call loadSettingsToPanel() here if you want to refresh fields:
-      // loadSettingsToPanel();
-    }
-  });
-}
-
-/*****************************************************
- * INFO PANE ACCORDION
- *****************************************************/
-// toggles the "active" class on the parent .accordion-item
-// so that CSS can show/hide .accordion-content
-const accordionButtons = document.querySelectorAll('.accordion-button');
-
-accordionButtons.forEach((btn) => {
-  btn.addEventListener('click', () => {
-    // The parent .accordion-item
-    const accordionItem = btn.closest('.accordion-item');
-    if (!accordionItem) return;
-
-    // Toggle 'active' class
-    accordionItem.classList.toggle('active');
-  });
-});
-
-/*****************************************************
- * INTRO PANEL FUNCTIONALITY
- *****************************************************/
-
-// Grab references to the Intro Panel and Toggle Button by their IDs
-const introPanel = document.getElementById('introPanel');
-const introToggleButton = document.getElementById('introToggleButton');
-
-function openIntroPanel() {
-    introPanel.classList.add('active');
-    introToggleButton.classList.add('close-mode');
-    introToggleButton.textContent = "✕";
-  }
-  function closeIntroPanel() {
-    introPanel.classList.remove('active');
-    introToggleButton.classList.remove('close-mode');
-    introToggleButton.textContent = "About the Game";
-  }
-
-if (introToggleButton) {
-  introToggleButton.addEventListener('click', () => {
-    if (introPanel.classList.contains('active')) {
-      closeIntroPanel();
-    } else {
-      openIntroPanel();
-    }
-  });
-}
-
-/*****************************************************
- * INTRO PANEL FUNCTIONALITY
- *****************************************************/
-
-// Grab references to the Intro Panel and Toggle Button by their IDs
-const InfoPane = document.getElementById('infoPane');
-const InfoToggleButton = document.getElementById('infoToggleButton');
-
-function openInfoPane() {
-    InfoPane.classList.add('active');
-    InfoToggleButton.classList.add('close-mode');
-    InfoToggleButton.textContent = "✕";
-  }
-  function closeInfoPane() {
-    InfoPane.classList.remove('active');
-    InfoToggleButton.classList.remove('close-mode');
-    InfoToggleButton.textContent = "Market Info";
-  }
-
-if (InfoToggleButton) {
-  InfoToggleButton.addEventListener('click', () => {
-    InfoPane.classList.contains('active') ? closeInfoPane() : openInfoPane();
-    
-  });
 }

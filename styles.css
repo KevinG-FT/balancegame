@@ -171,14 +171,14 @@
     font-size: 2rem;
     font-weight: bold;
     color: #12ac12; /*  Green */
-    margin-bottom: 6px;
+    margin-bottom: 0px;
   }
   
   /* Top bar holding status & timer next to controls */
   .top-bar {
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: 10px;
     flex-wrap: wrap;
   }
   
@@ -518,7 +518,11 @@
   .revenue {
     font-size: 1.5rem;
     font-weight: bold;
+    width: 230px;
     color: #00FF00; /* Bright green */
+    text-align: center; 
+    margin-left: auto;
+    margin-right: 30px;
   }
   
   .cycleCount {
