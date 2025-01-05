@@ -10,6 +10,74 @@ let gameActive = false;     // Indicates whether the game is active
 let gamePaused = false;
 let mainLoop = null;        // The setInterval handle for our main loop
 
+// Scenes: 2 big chunks (morning->noon, noon->evening)
+const sceneConfigs = [
+  {
+    label: "Early Morning",
+    startSec: 0, 
+    endSec: 180,    // 3 minutes
+    startDayMin: 300,   // 05:00
+    endDayMin:   600    // 10:00
+  },
+  {
+    label: "Midday",
+    startSec: 180, 
+    endSec: 300,   // next 2 minutes
+    startDayMin: 600,   // 10:00
+    endDayMin:   900    // 15:00
+  },
+  {
+    label: "Afternoon-Evening",
+    startSec: 300,
+    endSec: 480,   // last 3 minutes
+    startDayMin: 900,   // 15:00
+    endDayMin:   1200   // 20:00
+  }
+];
+
+/**
+ * TIME IN THIS GAME
+ * 
+ * - Scenes compress the day/night cycle into a short timeline, so players experience 
+ *   varied demand and weather in minutes rather than hours.
+ * - Short events (e.g., battery discharge, FCR-D ramp) still happen in real-time seconds, 
+ *   preserving the “fast response” feel of balancing services.
+ * 
+ * 1) Hybrid "Scenes"
+ *    The game simulates a partial day (e.g., 05:00–20:00) over a shorter real-time 
+ *    period (e.g., 8 minutes).  
+ *    The day is divided into a few "scenes" (e.g., dawn → midday → evening) and linearly 
+ *    interpolate the environment's time-of-day and conditions within each scene.
+ * 
+ * 2) Real-Second Frequency/Balancing
+ *    Reserve activations (FCR-D, FCR-N, FFR) and battery ramps still use real seconds 
+ *    for ramp times. For example, a 30-second FCR-D ramp is 30 actual seconds in game. 
+ *    This preserves the sense of short, fast frequency responses.
+ * 
+ * 3) Delta Time (dtSec)
+ *    The main loop calculates a delta time (dtSec) from the UI update interval 
+ *    (uiUpdateIntervalMs / 1000). Functions like updateFCRDUp(dtSec) and chargeBattery(dtSec) 
+ *    use dtSec to ensure ramps, SoC changes, and frequency impacts scale with real time 
+ *    regardless of the update interval.
+ * 
+ * 4) Environment Interpolation
+ *    Each scene defines a start and end time-of-day (in "minutes since midnight") 
+ *    and a start/end real-time (in seconds). Every loop, we find which scene we're in, 
+ *    calculate a fraction of how far we are through that scene, and interpolate an 
+ *    in-game “timeOfDayMinutes.” The environment/demand/wind logic uses this in-game 
+ *    time to compute conditions (like sunrise, temperature changes) but in accelerated 
+ *    steps.
+ * 
+ * 5) Optional Scaling of Short Durations
+ *    If 30-second ramps or similar events feel too long for this game, we can 
+ *    reduce their durations (e.g., 15 seconds) to better match accelerated day progress. 
+ *    We leave them at 30 for more realism initially.
+ *
+ */
+
+
+
+
 /*****************************************************
  * BATTERY CONSTANTS
  *****************************************************/
@@ -46,6 +114,14 @@ let frequency = 50.0;    // Current grid frequency (Hz)
 let soc = 50;            // State of Charge (%)
 let cycleCount = 0;      // Number of charge/discharge cycles used
 let revenue = 0;         // Total revenue earned
+
+
+// FCR-N 
+/**
+ * A global variable to hold the current FCR-N command in MW,
+ * which ramps gradually to the desired level each update.
+ */
+let fcrNCommandMW = 0;
 
 // FCR / FFR toggles
 let fcrNToggled = false;
@@ -169,7 +245,7 @@ function logToConsole(msg) {
  *****************************************************/
 function formatTime(tMinutes) {
   const hours = Math.floor(tMinutes / 60) % 24;
-  const minutes = tMinutes % 60;
+  const minutes = Math.floor(tMinutes % 60);
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
 }
 
@@ -180,8 +256,8 @@ function formatTime(tMinutes) {
 function getDefaultSettings() {
   return {
     // =============== GAME TIME SETTINGS =================
-    gameDurationSeconds: 180,
-    compressedMinutesPerSecond: 1440 / 180,
+    gameDurationSeconds: 480,
+    compressedMinutesPerSecond: 1440 / 180,  // not used currently with the hybrid - scene based time scheme
 
     // =============== ENVIRONMENT PARAMETERS =================
     temperatureAmplitude: 5,
@@ -193,7 +269,7 @@ function getDefaultSettings() {
 
     // =============== CAPACITIES & INITIAL GAS =================
     pvGenerationMaxMW: 50,
-    windGenerationMaxMW: 80,
+    windGenerationMaxMW: 30,
     gasGenerationMaxMW: 100,
     initialGasMW: 59,
     gasGenerationMW: 59,
@@ -362,6 +438,36 @@ function getBaseWind(tMinutes) {
 }
 
 /**
+ * Returns wind generation (MW) based on wind speed (m/s).
+ * piecewise approach:
+ *  - Cut-in speed: e.g. 3 m/s
+ *  - Linear ramp up to rated speed: e.g. 12 m/s
+ *  - Constant output (max) up to cut-out: e.g. 25 m/s
+ *  - 0 output above cut-out
+ */
+function computeWindGeneration(windSpeed, windGenMaxMW) {
+  const cutIn = 3;   // below this (m/s), 0 MW
+  const rated = 12;  // above this, full output
+  const cutOut = 25; // above this, 0 MW
+
+  if (windSpeed < cutIn) {
+    // below cut-in, no generation
+    return 0;
+  } else if (windSpeed >= cutIn && windSpeed < rated) {
+    // linear ramp from cutIn..rated => 0..max
+    // e.g. if windSpeed=3 => fraction=0, if windSpeed=12 => fraction=1
+    const fraction = (windSpeed - cutIn) / (rated - cutIn);
+    return fraction * windGenMaxMW;
+  } else if (windSpeed >= rated && windSpeed <= cutOut) {
+    // full power between rated and cut-out
+    return windGenMaxMW;
+  } else {
+    // above cut-out => must shut down
+    return 0;
+  }
+}
+
+/**
  * updateWind(tMinutes):
  */
 function updateWind(tMinutes) {
@@ -447,7 +553,8 @@ function updateEnvironment(tMinutes, dt=1) {
     currentDemandMW = calculateDemand(tMinutes);
   
     // Wind
-    windGenerationMW = Math.min(currentWind, settings.windGenerationMaxMW);
+   //  windGenerationMW = Math.min(currentWind, settings.windGenerationMaxMW);
+    windGenerationMW = computeWindGeneration(currentWind, settings.windGenerationMaxMW);
   
     // PV ramp
     //   get sunFactor from currentSunCondition
@@ -610,7 +717,7 @@ function setAllBatterySoC(socValue) {
   batterySocs.forEach((socEl) => {
     socEl.style.height = socValue + '%';
   });
-  logToConsole(`All batteries set to ${socValue}% SoC`);
+  logToConsole(`All batteries set to ${socValue.toFixed(2)}% SoC`);
 }
 
 function updateBatteryColorClasses(socValue) {
@@ -692,7 +799,76 @@ function updateFrequency() {
 /*****************************************************
  * FCR-N
  *****************************************************/
-function updateFCRN() {
+function updateFCRN(dtSec = 1) {
+  // If FCR-N is not toggled, do nothing, and reset command to 0.
+  if (!fcrNToggled) {
+    fcrNCommandMW = 0;
+    return;
+  }
+
+  // Check if SoC/freq is out of allowable range, or if FCR-D is active.
+  //    If so, disable FCR-N and reset command.
+  if (
+    soc < settings.fcrNSoCMin ||
+    soc > settings.fcrNSoCMax ||
+    frequency < settings.fcrNFrequencyRange.min ||
+    frequency > settings.fcrNFrequencyRange.max ||
+    fcrDUpActive ||
+    fcrDDownActive
+  ) {
+    if (fcrNToggled) {
+      toggleFcrN(false);
+      fcrNWasForcedOff = true;
+      logToConsole("FCR-N disabled due to SoC/freq out of range or FCR-D active");
+    }
+    fcrNCommandMW = 0; // Reset
+    return;
+  }
+
+  // Calculate the "desired" FCR-N power command (in MW) based on frequency deviation.
+  //    e.g. ±5 MW at ±0.2 Hz from nominal (50.0).
+  const freqDeviation = frequency - settings.frequencyBase;
+  let desiredCommand = (freqDeviation / 0.2) * 5; // clamp ±5 MW
+  desiredCommand = clamp(desiredCommand, -5, 5);
+
+  // Gradually ramp fcrNCommandMW toward desiredCommand at a limited ramp rate (MW/s)
+  const rampRate = 2; // e.g. can change to 1, 2, 5, etc. MW per second
+  const maxStep = rampRate * dtSec;
+  const diff = desiredCommand - fcrNCommandMW;
+
+  if (Math.abs(diff) <= maxStep) {
+    // If we're close enough, jump directly
+    fcrNCommandMW = desiredCommand;
+  } else {
+    // Otherwise, move incrementally in the correct direction
+    fcrNCommandMW += Math.sign(diff) * maxStep;
+  }
+
+  // Update SoC based on the *actual* commanded MW, scaled by dtSec.
+  //    e.g. if we command +3 MW for 1s, SoC changes by (3 MW)*(fcrNSoCChangePerMW)*(1s).
+  //    If fcrNSoCChangePerMW is "0.3" => SoC changes 3*0.3 = 0.9% in 1 second.
+  let socChange = fcrNCommandMW * settings.fcrNSoCChangePerMW * dtSec;
+  soc = clamp(soc + socChange, 0, 100);
+
+  // Frequency feedback: The bigger the MW, the more it drags frequency back.
+  //    Multiply by batteryCount if you want more total effect from multiple units.
+  let freqImpact = fcrNCommandMW * 0.02 * batteryCount * dtSec;
+  frequency -= freqImpact;
+
+  // Revenue & cycle cost
+  //    The bigger the MW, the more revenue earned for each second of FCR-N operation.
+  let revenueImpact = Math.abs(fcrNCommandMW) * settings.fcrNRevenuePerMW * batteryCount * dtSec;
+  revenue += revenueImpact;
+
+  // Some simple cycle impact: more MW used => more cycles
+  cycleCount += Math.abs(fcrNCommandMW) * 0.2 * dtSec;
+
+  logToConsole(
+    `FCR-N => desired=${desiredCommand.toFixed(2)}MW, actual=${fcrNCommandMW.toFixed(2)}MW, ` +
+    `SoC=${soc.toFixed(1)}%, freq=${frequency.toFixed(2)}Hz`);
+}
+
+/* function updateFCRN() {
   if (!fcrNToggled) return;
 
   if (
@@ -734,16 +910,19 @@ function updateFCRN() {
   logToConsole(
     `FCR-N => cmd=${powerCommandMW.toFixed(2)} MW, SoC=${soc.toFixed(1)}%, freq=${frequency.toFixed(2)}`
   );
-}
+} */
 
 /*****************************************************
- * FCR-D Up 
+ * FCR-D Up (Scaling by total battery capacity)
  *****************************************************/
 function updateFCRDUp(deltaTime) {
+  // If FCR-D Up is not active, do nothing
   if (!fcrDUpActive) {
     fcrDUpState = FCRD_UP_STATE.INACTIVE;
     return;
   }
+
+  // If frequency is back to normal (>= threshold), deactivate
   if (frequency >= settings.fcrDActivationThreshold.up) {
     if (fcrDUpState !== FCRD_UP_STATE.INACTIVE) {
       logToConsole("FCR-D Up deactivated (freq normal)");
@@ -753,6 +932,7 @@ function updateFCRDUp(deltaTime) {
     return;
   }
 
+  // Timer-based partial vs. full activation
   fcrDUpTimer += deltaTime;
 
   if (fcrDUpTimer >= settings.fcrDRampTimeFull) {
@@ -766,42 +946,70 @@ function updateFCRDUp(deltaTime) {
       logToConsole("FCR-D Up partially activated");
     }
   } else if (fcrDUpState === FCRD_UP_STATE.INACTIVE) {
-      fcrDUpState = FCRD_UP_STATE.PARTIAL;
-      logToConsole("FCR-D Up ramping");
+    fcrDUpState = FCRD_UP_STATE.PARTIAL;
+    logToConsole("FCR-D Up ramping");
   }
+
+  // Decide how many MW are used in partial vs. full
+  // Example:
+  //   PARTIAL = 30% of totalBatteryPowerRatingMW
+  //   FULL    = 100% of totalBatteryPowerRatingMW
+  let usedMW = 0;
+  if (fcrDUpState === FCRD_UP_STATE.PARTIAL) {
+    usedMW = 0.3 * totalBatteryPowerRatingMW;
+  } else if (fcrDUpState === FCRD_UP_STATE.FULL) {
+    usedMW = totalBatteryPowerRatingMW;
+  }
+
+  // Frequency impact, SoC impact, revenue, cycles, etc.
+  //    We'll scale each by the ratio of (usedMW / SINGLE_BATTERY_POWER_RATING_MW)
+  //    to reflect if we have more capacity than a single battery.
+  const ratio = usedMW / SINGLE_BATTERY_POWER_RATING_MW; 
+  // For instance, if usedMW=40 MW but single battery rating=20 MW => ratio=2 => 
+  // twice the effect of one battery at "full" power.
 
   let freqImpact = 0, socImpact = 0, revImpact = 0, cycleImpact = 0;
 
+  // partial or full effect constants from your settings
   if (fcrDUpState === FCRD_UP_STATE.PARTIAL) {
-      freqImpact = settings.fcrDFrequencyImpactPartial * deltaTime * batteryCount;
-      socImpact = settings.fcrDSoCImpactPartial * deltaTime;
-      revImpact = settings.fcrDRevenuePerSecPartial * deltaTime * batteryCount;
-      cycleImpact = 0.05 * deltaTime;
+    // freqChange, SoC, revenue, etc. at partial
+    freqImpact = settings.fcrDFrequencyImpactPartial * ratio * deltaTime;
+    socImpact  = settings.fcrDSoCImpactPartial * ratio * deltaTime;
+    revImpact  = settings.fcrDRevenuePerSecPartial * ratio * deltaTime;
+    cycleImpact = 0.05 * ratio * deltaTime;
   } else if (fcrDUpState === FCRD_UP_STATE.FULL) {
-      freqImpact = settings.fcrDFrequencyImpactFull * deltaTime * batteryCount;
-      socImpact = settings.fcrDSoCImpactFull * deltaTime;
-      revImpact = settings.fcrDRevenuePerSecFull * deltaTime * batteryCount;
-      cycleImpact = 0.1 * deltaTime;
+    freqImpact = settings.fcrDFrequencyImpactFull * ratio * deltaTime;
+    socImpact  = settings.fcrDSoCImpactFull * ratio * deltaTime;
+    revImpact  = settings.fcrDRevenuePerSecFull * ratio * deltaTime;
+    cycleImpact = 0.1 * ratio * deltaTime;
   }
 
+  // Apply changes
   frequency += freqImpact;
+  // Because FCR-D Up means "injecting power into the battery" (charging),
+  // SoC goes up. Make sure we clamp 0..100
   soc = Math.max(0, Math.min(100, soc + socImpact));
   revenue += revImpact;
   cycleCount += cycleImpact;
 
   logToConsole(
-    `FCR-D Up: ${fcrDUpState}, dFreq=${freqImpact.toFixed(3)}, dSoC=${socImpact.toFixed(1)}%, dRev=€${revImpact.toFixed(2)}`);
+    `FCR-D Up: ${fcrDUpState}, usedMW=${usedMW.toFixed(1)},` +
+    ` dFreq=${freqImpact.toFixed(3)}, dSoC=${socImpact.toFixed(2)}%, dRev=€${revImpact.toFixed(2)}`
+  );
 }
 
-/*****************************************************
- * FCR-D Down 
- *****************************************************/
 
+/*****************************************************
+ * FCR-D Down (Scaling by total battery capacity)
+ *****************************************************/
 function updateFCRDDown(deltaTime) {
+  // If FCR-D Down is not active, do nothing
   if (!fcrDDownActive) {
     fcrDDownState = FCRD_DOWN_STATE.INACTIVE;
     return;
   }
+
+  // If frequency is back to normal (<= threshold.down), deactivate
   if (frequency <= settings.fcrDActivationThreshold.down) {
     if (fcrDDownState !== FCRD_DOWN_STATE.INACTIVE) {
       logToConsole("FCR-D Down deactivated (freq normal)");
@@ -811,7 +1019,9 @@ function updateFCRDDown(deltaTime) {
     return;
   }
 
+  // Timer-based partial vs. full activation
   fcrDDownTimer += deltaTime;
+
   if (fcrDDownTimer >= settings.fcrDRampTimeFull) {
     if (fcrDDownState !== FCRD_DOWN_STATE.FULL) {
       fcrDDownState = FCRD_DOWN_STATE.FULL;
@@ -827,31 +1037,56 @@ function updateFCRDDown(deltaTime) {
     logToConsole("FCR-D Down ramping");
   }
 
-  let freqImpact = 0,
-    socImpact = 0,
-    revImpact = 0,
-    cycleImpact = 0;
-
+  // Decide how many MW are used in partial vs. full
+  // Example:
+  //   PARTIAL = 30% of totalBatteryPowerRatingMW
+  //   FULL    = 100% of totalBatteryPowerRatingMW
+  let usedMW = 0;
   if (fcrDDownState === FCRD_DOWN_STATE.PARTIAL) {
-      freqImpact = settings.fcrDFrequencyImpactPartial * deltaTime * batteryCount;
-      socImpact = settings.fcrDSoCImpactPartial * deltaTime;
-      revImpact = settings.fcrDRevenuePerSecPartial * deltaTime * batteryCount;
-      cycleImpact = 0.05 * deltaTime;
+    usedMW = 0.3 * totalBatteryPowerRatingMW;
   } else if (fcrDDownState === FCRD_DOWN_STATE.FULL) {
-      freqImpact = settings.fcrDFrequencyImpactFull * deltaTime * batteryCount;
-      socImpact = settings.fcrDSoCImpactFull * deltaTime;
-      revImpact = settings.fcrDRevenuePerSecFull * deltaTime * batteryCount;
-      cycleImpact = 0.1 * deltaTime;
+    usedMW = totalBatteryPowerRatingMW;
   }
 
+  // We'll scale the frequency, SoC, revenue, cycles by the ratio
+  // of (usedMW / SINGLE_BATTERY_POWER_RATING_MW)
+  const ratio = usedMW / SINGLE_BATTERY_POWER_RATING_MW;
+
+  let freqImpact = 0;
+  let socImpact = 0;
+  let revImpact = 0;
+  let cycleImpact = 0;
+
+  // partial/full effect constants from your settings
+  if (fcrDDownState === FCRD_DOWN_STATE.PARTIAL) {
+    freqImpact  = settings.fcrDFrequencyImpactPartial * ratio * deltaTime;
+    socImpact   = settings.fcrDSoCImpactPartial * ratio * deltaTime;
+    revImpact   = settings.fcrDRevenuePerSecPartial * ratio * deltaTime;
+    cycleImpact = 0.05 * ratio * deltaTime;
+  } else if (fcrDDownState === FCRD_DOWN_STATE.FULL) {
+    freqImpact  = settings.fcrDFrequencyImpactFull * ratio * deltaTime;
+    socImpact   = settings.fcrDSoCImpactFull * ratio * deltaTime;
+    revImpact   = settings.fcrDRevenuePerSecFull * ratio * deltaTime;
+    cycleImpact = 0.1 * ratio * deltaTime;
+  }
+
+  // Apply changes
   frequency += freqImpact;
+
+  // FCR-D Down => battery is "discharging" to push freq back down => SoC goes DOWN
+  // 
+  socImpact = -Math.abs(socImpact); 
+
   soc = Math.max(0, Math.min(100, soc + socImpact));
   revenue += revImpact;
   cycleCount += cycleImpact;
 
   logToConsole(
-    `FCR-D Down: ${fcrDDownState}, dFreq=${freqImpact.toFixed(3)}, dSoC=${socImpact.toFixed(1)}%, dRev=€${revImpact.toFixed(2)}`);
+    `FCR-D Down: ${fcrDDownState}, usedMW=${usedMW.toFixed(1)}, dFreq=${freqImpact.toFixed(3)}, ` +
+    `dSoC=${socImpact.toFixed(2)}%, dRev=€${revImpact.toFixed(2)}`
+  );
 }
+
 
 /*****************************************************
  * FFR LOGIC
@@ -1060,57 +1295,104 @@ toggles.ffrToggle.onchange = () => {
  * CHARGE BATTERY
  *****************************************************/
 buttons.charge.onclick = () => {
-    if (soc >= settings.batteryMaxSoC) {
-      logToConsole("Battery is already fully charged");
-      return;
-    }
-    // Use the BATTERY_POWER_RATING_MW constant
-    const power = BATTERY_POWER_RATING_MW;  
-    const chargeEnergyMWh = power * (settings.uiUpdateIntervalMs / 3600000);
-    const cost = settings.batteryCostPerMWh * chargeEnergyMWh;
-  
-    // SoC changes: TBD: Refine this logic depending on how we 
-    // want SoC (%) to correlate with total MWh capacity.
-    soc = Math.min(
-      settings.batteryMaxSoC,
-      soc + settings.batterySoCChangePerChargeMWh
-    );
-  
-    revenue -= cost * batteryCount;
-    cycleCount += 0.1;
-  
-    frequency = Math.max(48, Math.min(52, frequency - (0.01 * batteryCount)));
-  
-    updateUI();
-    logToConsole(`Battery charged: -€${cost.toFixed(4)}, SoC=${soc.toFixed(1)}%`);
+    // each click is "1 second of charging" or some fraction
+    chargeBattery(30);
   };
+
+function chargeBattery(deltaTimeSec = 1) {
+     // 1) If already at max SoC, abort
+  if (soc >= settings.batteryMaxSoC) {
+    logToConsole("Battery is already fully charged");
+    return;
+  }
+
+  // Compute how many MWh are charged in `deltaTimeSec`
+  //    totalBatteryPowerRatingMW is the entire BESS's charge power
+  //    e.g., 20 MW for a single battery
+  const powerMW = totalBatteryPowerRatingMW;
+  // Convert MW * hours => MWh, so MW * (seconds/3600) => MWh
+  const chargeEnergyMWh = powerMW * (deltaTimeSec / 3600);
+
+  // Convert MWh to SoC%. 
+  //    If totalBatteryEnergyCapacityMWh = 40, then 1% SoC = 0.4 MWh
+  //    => SoC% gained = (MWh gained / totalMWhCapacity) * 100
+  const capacityMWh = totalBatteryEnergyCapacityMWh;
+  const socPerMWh = 100 / capacityMWh;
+  const socGained = chargeEnergyMWh * socPerMWh;
+
+  // Apply cost
+  //    e.g., batteryCostPerMWh * MWh
+  const cost = settings.batteryCostPerMWh * chargeEnergyMWh;
+
+  soc = Math.min(settings.batteryMaxSoC, soc + socGained);
+  revenue -= cost;
+  // 0.1 cycles per 1% SoC, can tune
+  cycleCount += socGained * 0.1;
+
+  // Small frequency effect (comment out for full effect)
+  //    scale it by deltaTimeSec for per-second changes
+  frequency = clamp(
+    frequency - (0.01 * batteryCount * deltaTimeSec),
+    48, 52
+  );
+
+  updateUI();
+
+  logToConsole(
+    `Battery charged: -€${cost.toFixed(4)}, SoC=${soc.toFixed(1)}% (added ${socGained.toFixed(2)}%), cost=${cost.toFixed(4)}, cyc=${cycleCount.toFixed(2)}`);
+  };
+
+/*****************************************************
+ * Clamp
+ *****************************************************/
+
+  function clamp(val, minVal, maxVal) {
+    return Math.max(minVal, Math.min(maxVal, val));
+  }
 
 /*****************************************************
  * DISCHARGE BATTERY
  *****************************************************/
+buttons.discharge.onclick = () => {
+  dischargeBattery(30);
+};
 
-  buttons.discharge.onclick = () => {
+
+function dischargeBattery(deltaTimeSec = 1) {
     if (soc <= settings.batteryMinSoC) {
       logToConsole("Battery is already fully discharged");
       return;
     }
-    const power = BATTERY_POWER_RATING_MW; 
-    const dischargeEnergyMWh = power * (settings.uiUpdateIntervalMs / 3600000);
+  
+    // How many MWh are discharged in `deltaTimeSec`
+    const powerMW = totalBatteryPowerRatingMW;
+    const dischargeEnergyMWh = powerMW * (deltaTimeSec / 3600);
+  
+    // Convert MWh to SoC% depletion
+    const capacityMWh = totalBatteryEnergyCapacityMWh;
+    const socPerMWh = 100 / capacityMWh;
+    const socLost = dischargeEnergyMWh * socPerMWh;
+  
+    // Income from discharging
     const income = settings.batteryIncomePerMWh * dischargeEnergyMWh;
   
-    soc = Math.max(
-      settings.batteryMinSoC,
-      soc - settings.batterySoCChangePerDischargeMWh
+    // Update SoC, revenue, cycle count
+    soc = Math.max(settings.batteryMinSoC, soc - socLost);
+    revenue += income;
+    cycleCount += socLost * 0.1;  // e.g., 0.1 cycles per 1%SoC used
+  
+    // Small frequency effect damping
+    frequency = clamp(
+      frequency + (0.01 * batteryCount * deltaTimeSec),
+      48, 52
     );
   
-    revenue += income * batteryCount;
-    cycleCount += 0.1;
-  
-    frequency = Math.max(48, Math.min(52, frequency + (0.01 * batteryCount)));
-  
     updateUI();
-    logToConsole(`Battery discharged: +€${income.toFixed(4)}, SoC=${soc.toFixed(1)}%`);
+  
+    logToConsole(
+      `Battery discharged: +€${income.toFixed(4)}, SoC=${soc.toFixed(1)}% (lost ${socLost.toFixed(2)}%), cyc=${cycleCount.toFixed(2)}`);
   };
+  
   
 
 /*****************************************************
@@ -1190,42 +1472,50 @@ if (InfoToggleButton) {
 /*****************************************************
  * MAIN GAME LOOP
  *****************************************************/
+let gameTimeSec = 0; // tracks how many real seconds have passed in the current game
+
 function startMainLoop() {
   clearInterval(mainLoop);
   mainLoop = setInterval(() => {
     if (!gameActive) return;
 
-    // Time
-    timeOfDayMinutes += settings.compressedMinutesPerSecond;
-    if (timeOfDayMinutes >= 1440) {
-      timeOfDayMinutes -= 1440;
+    // figure out how many real seconds pass each loop (usually 1 if uiUpdateIntervalMs=1000)
+    const dtSec = settings.uiUpdateIntervalMs / 1000;
+
+    // increment the gameTimeSec
+    gameTimeSec += dtSec;
+
+    // find which scene we are in
+    const scene = sceneConfigs.find(s => gameTimeSec >= s.startSec && gameTimeSec < s.endSec);
+    if (!scene) {
+      // If we are past the last scene, either freeze environment or end the game
+      gameActive = false; 
+      clearInterval(mainLoop);
+      return;
     }
 
-    // Environment
-    updateEnvironment(timeOfDayMinutes);
+    // figure out fraction of the way through this scene
+    const sceneFraction = (gameTimeSec - scene.startSec) / (scene.endSec - scene.startSec);
 
-    // Calculate netImbalance BEFORE calling updateGasDispatch
+    // interpolate "virtual" timeOfDay in minutes
+    timeOfDayMinutes = scene.startDayMin + sceneFraction * (scene.endDayMin - scene.startDayMin);
+
+    // update environment
+    updateEnvironment(timeOfDayMinutes, dtSec);
+
+    // net imbalance, gas ramp, frequency, etc.
     const netImbalanceMW = currentGenerationMW - currentDemandMW;
     updateGasDispatch(netImbalanceMW);
+    applyGasRamp(dtSec);
 
-    // Gas ramp
-    applyGasRamp(1); // dt=1 second
-
-    // Recalc total after gas changed
     currentGenerationMW = windGenerationMW + pvGenerationMW + currentGasMW;
-
-    // Frequency
     updateFrequency();
 
-    // FCR-N
-    updateFCRN();
-
-    // FCR-D
-    updateFCRDUp(1);
-    updateFCRDDown(1);
-
-    // FFR
-    updateFFR(1);
+    // FCR & FFR
+    updateFCRN(dtSec);
+    updateFCRDUp(dtSec);
+    updateFCRDDown(dtSec);
+    updateFFR(dtSec);
 
     // Market Prices
     updatePrices(timeOfDayMinutes);
@@ -1233,11 +1523,18 @@ function startMainLoop() {
     // UI
     updateUI();
 
-    // Check game over
-    checkGameOver();
+    // countdown time
+    timeRemaining -= dtSec;
 
-    // Countdown
-    timeRemaining--;
+    // check if frequency or SoC is out of range every iteration --
+    checkGameOver(); 
+    if (!gameActive) {
+      // If checkGameOver() turned off the gameActive flag, kill the loop
+      clearInterval(mainLoop);
+      return;
+    }
+
+    // If we reached time=0, also end
     if (timeRemaining <= 0) {
       gameActive = false;
       timeRemaining = 0;
@@ -1246,6 +1543,8 @@ function startMainLoop() {
     }
   }, settings.uiUpdateIntervalMs);
 }
+
+
 
 /*****************************************************
  * UI & GAME-OVER
@@ -1381,6 +1680,7 @@ buttons.stopGame.onclick = () => {
 
 function resetGameState() {
   timeRemaining = settings.gameDurationSeconds;
+  gameTimeSec = 0;          
   timeOfDayMinutes = 0;
   soc = settings.batteryInitialSoC;
   cycleCount = 0;
