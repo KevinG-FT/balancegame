@@ -646,7 +646,7 @@ addBatteryBtn.addEventListener('click', () => {
     newBatterySoc.classList.add('battery-soc', 'xbox-theme');
     newBatterySoc.id = 'batterySoc' + batteryCount;
 
-    // Copy SoC height from the first battery (or set your own default)
+    // Copy SoC height from the first battery (or set a new default)
     const firstBatterySoc = document.getElementById('batterySoc1');
     newBatterySoc.style.height = firstBatterySoc.style.height || '50%';
 
@@ -665,6 +665,7 @@ addBatteryBtn.addEventListener('click', () => {
     // Update stats and button states
     updateBatteryStats();
     updateBatteryButtons();
+
   }
 });
 
@@ -703,6 +704,9 @@ function updateBatteryStats() {
   batteryPowerRatingEl.textContent = `Power Rating: ${totalBatteryPowerRatingMW} MW`;
   batteryEnergyCapacityEl.textContent = `Energy Capacity: ${totalBatteryEnergyCapacityMWh} MWh`;
   batteryCRateEl.textContent = `C-Rate: ${cRate.toFixed(2)} c`;
+  
+  logToConsole(
+    `${batteryCount.toFixed(0)} batteries, Total Power Rating=${totalBatteryPowerRatingMW} MW, Total Energy Capacity=${totalBatteryEnergyCapacityMWh} MWh`);
 }
 
 // Enable/disable add/remove buttons according to current batteryCount

@@ -775,6 +775,12 @@
   
   .accordion-content p {
     color: #FFFFFF;
+    margin: 4px;
+  }
+
+  .accordion-content ul {
+    margin-left: 1.5em;
+    padding-left: 1.5em; 
   }
   
   /* Show accordion content when active */
