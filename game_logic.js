@@ -998,8 +998,7 @@ function updateFCRDUp(deltaTime) {
 
   logToConsole(
     `FCR-D Up: ${fcrDUpState}, usedMW=${usedMW.toFixed(1)},` +
-    ` dFreq=${freqImpact.toFixed(3)}, dSoC=${socImpact.toFixed(2)}%, dRev=€${revImpact.toFixed(2)}`
-  );
+    ` dFreq=${freqImpact.toFixed(3)}, dSoC=${socImpact.toFixed(2)}%, dRev=€${revImpact.toFixed(2)}`);
 }
 
 
@@ -1087,8 +1086,7 @@ function updateFCRDDown(deltaTime) {
 
   logToConsole(
     `FCR-D Down: ${fcrDDownState}, usedMW=${usedMW.toFixed(1)}, dFreq=${freqImpact.toFixed(3)}, ` +
-    `dSoC=${socImpact.toFixed(2)}%, dRev=€${revImpact.toFixed(2)}`
-  );
+    `dSoC=${socImpact.toFixed(2)}%, dRev=€${revImpact.toFixed(2)}`);
 }
 
 
@@ -1299,8 +1297,8 @@ toggles.ffrToggle.onchange = () => {
  * CHARGE BATTERY
  *****************************************************/
 buttons.charge.onclick = () => {
-    // each click is "1 second of charging" or some fraction
-    chargeBattery(30);
+    // each click is "1 second of charging" or some fraction. higher numbers can be problematic for grid stability with large capacities.
+    chargeBattery(15);
   };
 
 function chargeBattery(deltaTimeSec = 1) {
@@ -1358,7 +1356,7 @@ function chargeBattery(deltaTimeSec = 1) {
  * DISCHARGE BATTERY
  *****************************************************/
 buttons.discharge.onclick = () => {
-  dischargeBattery(30);
+  dischargeBattery(15);
 };
 
 
