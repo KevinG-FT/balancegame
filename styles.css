@@ -684,6 +684,27 @@
   .intro-toggle-button:hover {
     background-color: #0B5E07; /* Darker green on hover */
   }
+
+  .settings-readme-link-container {
+    position: absolute;      /* or fixed, if you want it to stay when scrolling */
+    bottom: 20px;            /* distance from the bottom */
+    right: 20px;             /* distance from the right side */
+    background-color: #fff;  /* background so it's readable */
+    border: 1px solid #ccc;  /* optional border */
+    padding: 8px 12px;       /* spacing around the link text */
+    border-radius: 4px;      /* slightly rounded corners */
+    z-index: 9999;           /* ensure it sits above other elements if needed */
+  }
+  
+  .settings-readme-link-container a {
+    color: #007bff;          /* typical link color, or choose your own */
+    text-decoration: none;   /* remove underline if desired */
+  }
+  
+  .settings-readme-link-container a:hover {
+    text-decoration: underline; /* show underline on hover (optional) */
+  }
+
   /* Info Pane */
   .info-pane {
     position: fixed;

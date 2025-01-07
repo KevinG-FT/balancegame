@@ -268,7 +268,7 @@ function getDefaultSettings() {
     windSpeedMin: 0,
 
     // =============== CAPACITIES & INITIAL GAS =================
-    pvGenerationMaxMW: 50,
+    pvGenerationMaxMW: 30,
     windGenerationMaxMW: 30,
     gasGenerationMaxMW: 100,
     initialGasMW: 59,
@@ -360,9 +360,6 @@ function resetSettings() {
   logToConsole("Settings reset to default (MW-based)");
 }
 
-/*****************************************************
- * SETTINGS PANEL 
- *****************************************************/
 
 /**
  * Open the settings panel
@@ -386,10 +383,21 @@ if (settingsButton) {
     } else {
       openSettingsPanel();
       // TBD: Call loadSettingsToPanel() here to refresh fields
-      // loadSettingsToPanel();
+       loadSettingsToPanel();
     }
   });
 }
+
+
+
+const saveBtn = document.getElementById('saveSettings');
+if (saveBtn) {
+  saveBtn.addEventListener('click', () => {
+    saveSettingsFromPanel();
+    closeSettingsPanel();
+  });
+}
+
 
 /*****************************************************
  * ENVIRONMENT CALCULATIONS (IN MW)
@@ -1298,7 +1306,7 @@ toggles.ffrToggle.onchange = () => {
  *****************************************************/
 buttons.charge.onclick = () => {
     // each click is "1 second of charging" or some fraction. higher numbers can be problematic for grid stability with large capacities.
-    chargeBattery(15);
+    chargeBattery(3);
   };
 
 function chargeBattery(deltaTimeSec = 1) {
@@ -1356,7 +1364,7 @@ function chargeBattery(deltaTimeSec = 1) {
  * DISCHARGE BATTERY
  *****************************************************/
 buttons.discharge.onclick = () => {
-  dischargeBattery(15);
+  dischargeBattery(3);
 };
 
 
