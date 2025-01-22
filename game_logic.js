@@ -513,26 +513,66 @@ function applyGasRamp(dt) {
   }
 }
 
-/** calculateDemand */
+/**
+ * calculateDemand
+ *
+ * A linear ramp-up for morning (6-9) and evening (17-20).
+ */
 function calculateDemand(tMinutes) {
+  // Convert total minutes into an hour and also keep track of minutes within the hour
   const hour = Math.floor(tMinutes / 60);
-  let demandMW = 69; // midnight base
 
-  if (hour >= 6 && hour < 9) {
-    demandMW *= 1.1;
-  } else if (hour >= 17 && hour < 20) {
-    demandMW *= 1.3;
+  // Define base demand at midnight
+  const baseDemand = 69;
+  // We'll apply a "time-based multiplier" to base demand
+  let timeMultiplier = 1.0;
+
+  // Define morning and evening ramp windows in minutes
+  const morningStart = 6 * 60;   // 360
+  const morningEnd   = 9 * 60;   // 540
+  const eveningStart = 17 * 60;  // 1020
+  const eveningEnd   = 20 * 60;  // 1200
+
+  // Compute a linear fraction between the start and end of each window
+  // e.g. fraction = 0.0 at start, 1.0 at end
+  function getFraction(currentMinutes, startMinutes, endMinutes) {
+    return (currentMinutes - startMinutes) / (endMinutes - startMinutes);
   }
 
+  const fractionMorning = getFraction(tMinutes, morningStart, morningEnd);
+  const fractionEvening = getFraction(tMinutes, eveningStart, eveningEnd);
+
+  // Morning ramp: from 100% of base demand up to 110% between 6:00 and 9:00
+  if (tMinutes >= morningStart && tMinutes < morningEnd) {
+    // fraction goes from 0.0 to 1.0
+    // So demand goes from 1.0 * base to 1.1 * base
+    timeMultiplier = 1.0 + 0.1 * fractionMorning;
+  }
+  // You might optionally want to ramp back down after 9:00 if you desire that shape.
+  // For simplicity, let's keep it at 110% after 9:00 until any next condition triggers.
+
+  // Evening ramp: from 100% up to 130% between 17:00 and 20:00
+  if (tMinutes >= eveningStart && tMinutes < eveningEnd) {
+    timeMultiplier = 1.0 + 0.3 * fractionEvening;
+  }
+  // Similarly, you can decide to ramp down after 20:00 or keep it at 130%.
+
+  // Now calculate demand using the timeMultiplier
+  let demandMW = baseDemand * timeMultiplier;
+
+  // Temperature factor
+  // Keep the logic the same as before, or adapt as desired
   if (currentTemperature < 10) {
     const degBelow10 = 10 - currentTemperature;
     let tempFactor = degBelow10 * 1.02;
+    // Possibly you also want a ramp effect for the temperature early in the day
     if (hour < 6) {
-      const fraction = hour / 6;
-      tempFactor *= fraction;
+      const fractionOfNight = hour / 6; // or use tMinutes for more exact fraction
+      tempFactor *= fractionOfNight;
     }
     demandMW += tempFactor;
   }
+
   return demandMW;
 }
 
