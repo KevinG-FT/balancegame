@@ -29,7 +29,7 @@ const sceneConfigs = [
   {
     label: "Afternoon-Evening",
     startSec: 300,
-    endSec: 480,   // last 3 minutes
+    endSec: 482,   // last 3 minutes
     startDayMin: 900,   // 15:00
     endDayMin:   1200   // 20:00
   }
@@ -74,8 +74,6 @@ const sceneConfigs = [
  *    We leave them at 30 for more realism initially.
  *
  */
-
-
 
 
 /*****************************************************
@@ -517,6 +515,12 @@ function applyGasRamp(dt) {
  * calculateDemand
  *
  * A linear ramp-up for morning (6-9) and evening (17-20).
+ * Increasing the final multiplier (e.g., from 30% to 40%) makes the demand peak higher. 
+ * The power system has to cover more load in total, but the ramp-up slope is the same if the 
+ * time window is unchanged.
+ * Shortening the time window makes the ramp steeper (the same total increase crammed into fewer minutes). 
+ * This also creates a sharper “shock” in demand.
+ * Both approaches will make the period more challenging, but in different ways. 
  */
 function calculateDemand(tMinutes) {
   // Convert total minutes into an hour and also keep track of minutes within the hour
@@ -531,7 +535,7 @@ function calculateDemand(tMinutes) {
   const morningStart = 6 * 60;   // 360
   const morningEnd   = 9 * 60;   // 540
   const eveningStart = 17 * 60;  // 1020
-  const eveningEnd   = 20 * 60;  // 1200
+  const eveningEnd   = 19 * 60;  // 1140 at 19:00 or 1200 at 20:00
 
   // Compute a linear fraction between the start and end of each window
   // e.g. fraction = 0.0 at start, 1.0 at end
@@ -548,24 +552,24 @@ function calculateDemand(tMinutes) {
     // So demand goes from 1.0 * base to 1.1 * base
     timeMultiplier = 1.0 + 0.1 * fractionMorning;
   }
-  // You might optionally want to ramp back down after 9:00 if you desire that shape.
-  // For simplicity, let's keep it at 110% after 9:00 until any next condition triggers.
+  // We might optionally want to ramp back down after 9:00 if we desire that shape.
+  // For simplicity, we keep it at 110% after 9:00 until any next condition triggers.
 
   // Evening ramp: from 100% up to 130% between 17:00 and 20:00
   if (tMinutes >= eveningStart && tMinutes < eveningEnd) {
     timeMultiplier = 1.0 + 0.3 * fractionEvening;
   }
-  // Similarly, you can decide to ramp down after 20:00 or keep it at 130%.
+  // Similarly, we can decide to ramp down after 20:00 or keep it at 130%.
 
   // Now calculate demand using the timeMultiplier
   let demandMW = baseDemand * timeMultiplier;
 
   // Temperature factor
-  // Keep the logic the same as before, or adapt as desired
+  // adapt as desired
   if (currentTemperature < 10) {
     const degBelow10 = 10 - currentTemperature;
     let tempFactor = degBelow10 * 1.02;
-    // Possibly you also want a ramp effect for the temperature early in the day
+    // Possibly we also want a ramp effect for the temperature early in the day
     if (hour < 6) {
       const fractionOfNight = hour / 6; // or use tMinutes for more exact fraction
       tempFactor *= fractionOfNight;
@@ -665,7 +669,7 @@ function updateEnvironment(tMinutes, dt=1) {
 
 let totalBatteryPowerRatingMW = SINGLE_BATTERY_POWER_RATING_MW * batteryCount;
 let totalBatteryEnergyCapacityMWh = SINGLE_BATTERY_ENERGY_CAPACITY_MWH * batteryCount;
-// If you want to store cycles, SoC, etc., do so here as well
+// we store cycles, SoC, etc. here as well
 
 // DOM references
 const batteryCenter = document.getElementById('batteryCenter');
